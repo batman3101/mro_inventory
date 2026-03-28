@@ -1,0 +1,346 @@
+/**
+ * MRO Inventory - Database Type Definitions
+ * Supabase PostgreSQL 스키마 기반 타입 정의
+ */
+
+// =============================================================================
+// 위치 (Location)
+// =============================================================================
+
+export interface Location {
+  location_id: string; // UUID
+  location_code: string;
+  location_name: string;
+  description: string | null;
+  is_active: boolean;
+  created_at: string; // ISO 8601 timestamp
+  updated_at: string; // ISO 8601 timestamp
+}
+
+// =============================================================================
+// 카테고리 (Category)
+// =============================================================================
+
+export interface Category {
+  category_id: string; // UUID
+  category_code: string;
+  category_name: string;
+  parent_id: string | null; // self-referencing FK
+  sort_order: number;
+  is_active: boolean;
+  created_at: string; // ISO 8601 timestamp
+}
+
+// =============================================================================
+// 품목 (Item)
+// =============================================================================
+
+export interface Item {
+  item_id: string; // UUID
+  item_code: string;
+  item_name: string;
+  korean_name: string;
+  vietnamese_name: string;
+  category_id: string; // UUID FK -> categories
+  spec: string;
+  unit: string;
+  min_stock: number;
+  max_stock: number;
+  reorder_point: number;
+  storage_location: string;
+  status: string; // default 'ACTIVE'
+  description: string;
+  created_at: string; // ISO 8601 timestamp
+  created_by: string;
+  updated_at: string; // ISO 8601 timestamp
+  updated_by: string;
+}
+
+// =============================================================================
+// 공급업체 (Supplier)
+// =============================================================================
+
+export interface Supplier {
+  supplier_id: string; // UUID
+  supplier_code: string;
+  supplier_name: string;
+  contact_person: string;
+  email: string;
+  phone: string;
+  address: string;
+  country: string;
+  website: string;
+  status: string;
+  location_id: string; // UUID FK -> locations
+  created_at: string; // ISO 8601 timestamp
+  created_by: string;
+  updated_at: string; // ISO 8601 timestamp
+}
+
+// =============================================================================
+// 부서 (Department)
+// =============================================================================
+
+export interface Department {
+  department_id: string; // UUID
+  department_code: string;
+  department_name: string;
+  description: string | null;
+  created_at: string; // ISO 8601 timestamp
+  updated_at: string; // ISO 8601 timestamp
+}
+
+// =============================================================================
+// 사용자 (User)
+// =============================================================================
+
+export interface User {
+  user_id: string; // UUID
+  username: string;
+  full_name: string;
+  email: string;
+  password_hash: string; // server-only — never expose to client
+  role: string;
+  department_id: string | null; // FK -> departments
+  location_id: string | null; // FK -> locations
+  is_active: boolean;
+  phone_number: string;
+  position: string | null;
+  created_at: string; // ISO 8601 timestamp
+  updated_at: string; // ISO 8601 timestamp
+}
+
+// =============================================================================
+// 재고 (Inventory)
+// =============================================================================
+
+export interface Inventory {
+  inventory_id: string; // UUID
+  item_id: string; // UUID FK -> items
+  location_id: string; // UUID FK -> locations
+  current_quantity: number;
+  last_count_date: string; // ISO 8601 timestamp
+  storage_location: string;
+  updated_at: string; // ISO 8601 timestamp
+  updated_by: string;
+}
+
+// =============================================================================
+// 입고 (Inbound)
+// =============================================================================
+
+export interface Inbound {
+  inbound_id: string; // UUID
+  inbound_date: string; // YYYY-MM-DD
+  item_id: string; // UUID FK -> items
+  supplier_id: string; // UUID FK -> suppliers
+  location_id: string; // UUID FK -> locations
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  currency: string;
+  reference_number: string;
+  notes: string;
+  created_at: string; // ISO 8601 timestamp
+  created_by: string;
+  // Joined data fields
+  item_code: string;
+  item_name: string;
+  supplier_name: string;
+  item_unit: string;
+}
+
+// =============================================================================
+// 출고 (Outbound)
+// =============================================================================
+
+export interface Outbound {
+  outbound_id: string; // UUID
+  outbound_date: string; // YYYY-MM-DD
+  item_id: string; // UUID FK -> items
+  location_id: string; // UUID FK -> locations
+  quantity: number;
+  requester: string;
+  department_id: string | null; // FK -> departments
+  purpose: string;
+  cost_center: string;
+  reference_number: string;
+  notes: string;
+  created_at: string; // ISO 8601 timestamp
+  created_by: string;
+  // Joined data fields
+  item_code: string;
+  item_name: string;
+  department_name: string;
+  item_unit: string;
+}
+
+// =============================================================================
+// 품목 단가 (ItemPrice)
+// =============================================================================
+
+export interface ItemPrice {
+  price_id: string; // UUID
+  item_id: string; // UUID FK -> items
+  location_id: string; // UUID FK -> locations
+  unit_price: number;
+  currency: string;
+  supplier_id: string | null; // FK -> suppliers
+  effective_from: string; // YYYY-MM-DD
+  effective_to: string | null; // YYYY-MM-DD
+  is_current: boolean;
+  created_at: string; // ISO 8601 timestamp
+  created_by: string;
+  // Optional joined data
+  supplier_name?: string;
+  source?: 'item_prices' | 'inbound';
+}
+
+// =============================================================================
+// 재주문 알림 (ReorderAlert)
+// =============================================================================
+
+export interface ReorderAlert {
+  alert_id: string; // UUID
+  item_id: string; // UUID FK -> items
+  location_id: string; // UUID FK -> locations
+  current_quantity: number;
+  reorder_point: number;
+  status: string; // 'OPEN' | 'ACKNOWLEDGED' | 'RESOLVED'
+  created_at: string; // ISO 8601 timestamp
+  resolved_at: string | null; // ISO 8601 timestamp
+  resolved_by: string | null;
+}
+
+// =============================================================================
+// Database 래퍼 타입 (Supabase 클라이언트 호환)
+// =============================================================================
+
+export interface Database {
+  public: {
+    Tables: {
+      locations: {
+        Row: Location;
+        Insert: Omit<Location, 'location_id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Location, 'location_id' | 'created_at'>>;
+      };
+      categories: {
+        Row: Category;
+        Insert: Omit<Category, 'category_id' | 'created_at'>;
+        Update: Partial<Omit<Category, 'category_id' | 'created_at'>>;
+      };
+      items: {
+        Row: Item;
+        Insert: Omit<Item, 'item_id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Item, 'item_id' | 'created_at'>>;
+      };
+      suppliers: {
+        Row: Supplier;
+        Insert: Omit<Supplier, 'supplier_id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Supplier, 'supplier_id' | 'created_at'>>;
+      };
+      departments: {
+        Row: Department;
+        Insert: Omit<Department, 'department_id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<Department, 'department_id' | 'created_at'>>;
+      };
+      users: {
+        Row: User;
+        Insert: Omit<User, 'user_id' | 'created_at' | 'updated_at'>;
+        Update: Partial<Omit<User, 'user_id' | 'created_at'>>;
+      };
+      inventory: {
+        Row: Inventory;
+        Insert: Omit<Inventory, 'inventory_id' | 'updated_at'>;
+        Update: Partial<Omit<Inventory, 'inventory_id'>>;
+      };
+      inbound: {
+        Row: Inbound;
+        Insert: Omit<Inbound, 'inbound_id' | 'created_at' | 'item_code' | 'item_name' | 'supplier_name' | 'item_unit'>;
+        Update: Partial<Omit<Inbound, 'inbound_id' | 'created_at' | 'item_code' | 'item_name' | 'supplier_name' | 'item_unit'>>;
+      };
+      outbound: {
+        Row: Outbound;
+        Insert: Omit<Outbound, 'outbound_id' | 'created_at' | 'item_code' | 'item_name' | 'department_name' | 'item_unit'>;
+        Update: Partial<Omit<Outbound, 'outbound_id' | 'created_at' | 'item_code' | 'item_name' | 'department_name' | 'item_unit'>>;
+      };
+      item_prices: {
+        Row: ItemPrice;
+        Insert: Omit<ItemPrice, 'price_id' | 'created_at' | 'supplier_name' | 'source'>;
+        Update: Partial<Omit<ItemPrice, 'price_id' | 'created_at' | 'supplier_name' | 'source'>>;
+      };
+      reorder_alerts: {
+        Row: ReorderAlert;
+        Insert: Omit<ReorderAlert, 'alert_id' | 'created_at'>;
+        Update: Partial<Omit<ReorderAlert, 'alert_id' | 'created_at'>>;
+      };
+    };
+  };
+}
+
+// =============================================================================
+// 유틸리티 타입 (Utility Types)
+// =============================================================================
+
+export type Tables<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Row'];
+
+export type InsertDto<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Insert'];
+
+export type UpdateDto<T extends keyof Database['public']['Tables']> =
+  Database['public']['Tables'][T]['Update'];
+
+// =============================================================================
+// 확장 타입 (Extended Types with Relations)
+// =============================================================================
+
+export interface InventoryWithItem extends Inventory {
+  item?: Item;
+}
+
+export interface InboundDetail extends Inbound {
+  item?: Item;
+  supplier?: Supplier;
+}
+
+export interface OutboundDetail extends Outbound {
+  item?: Item;
+  department?: Department;
+}
+
+// =============================================================================
+// 열거형 상수 (Enum Constants)
+// =============================================================================
+
+export const ItemStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+  DISCONTINUED: 'DISCONTINUED',
+} as const;
+
+export type ItemStatusType = (typeof ItemStatus)[keyof typeof ItemStatus];
+
+export const SupplierStatus = {
+  ACTIVE: 'ACTIVE',
+  INACTIVE: 'INACTIVE',
+} as const;
+
+export type SupplierStatusType = (typeof SupplierStatus)[keyof typeof SupplierStatus];
+
+export const UserRole = {
+  SYSTEM_ADMIN: 'system_admin',
+  ADMIN: 'admin',
+  USER: 'user',
+  VIEWER: 'viewer',
+} as const;
+
+export type UserRoleType = (typeof UserRole)[keyof typeof UserRole];
+
+export const AlertStatus = {
+  OPEN: 'OPEN',
+  ACKNOWLEDGED: 'ACKNOWLEDGED',
+  RESOLVED: 'RESOLVED',
+} as const;
+
+export type AlertStatusType = (typeof AlertStatus)[keyof typeof AlertStatus];
