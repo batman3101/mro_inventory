@@ -15,6 +15,7 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import dayjs, { Dayjs } from 'dayjs';
 
@@ -29,6 +30,7 @@ interface SupplierData { supplier_name: string; value: number }
 interface TopItemData { item_name: string; quantity: number }
 
 const Analytics = () => {
+  const { t } = useTranslation();
   const defaultStart = dayjs().subtract(3, 'month').startOf('day');
   const defaultEnd = dayjs().endOf('day');
 
@@ -76,7 +78,7 @@ const Analytics = () => {
       // Department consumption
       const deptMap = new Map<string, number>();
       for (const row of outboundRaw ?? []) {
-        const name = row.department_name || '미지정';
+        const name = row.department_name || t('common.unassigned');
         deptMap.set(name, (deptMap.get(name) ?? 0) + (row.quantity ?? 0));
       }
       setDeptData(
@@ -111,7 +113,7 @@ const Analytics = () => {
       // Supplier cost
       const supplierMap = new Map<string, number>();
       for (const row of inboundRaw ?? []) {
-        const name = row.supplier_name || '미지정';
+        const name = row.supplier_name || t('common.unassigned');
         supplierMap.set(name, (supplierMap.get(name) ?? 0) + (row.total_price ?? 0));
       }
       setSupplierData(
@@ -124,7 +126,7 @@ const Analytics = () => {
       // Top 10 items by outbound quantity
       const itemMap = new Map<string, number>();
       for (const row of outboundRaw ?? []) {
-        const name = row.item_name || '미지정';
+        const name = row.item_name || t('common.unassigned');
         itemMap.set(name, (itemMap.get(name) ?? 0) + (row.quantity ?? 0));
       }
       setTopItems(
@@ -134,7 +136,7 @@ const Analytics = () => {
           .slice(0, 10)
       );
     } catch (error) {
-      console.error('분석 데이터 조회 실패:', error);
+      console.error('Analytics fetch error:', error);
     } finally {
       setLoading(false);
     }
@@ -156,7 +158,7 @@ const Analytics = () => {
     <div style={{ padding: '24px' }}>
       <Space style={{ marginBottom: '24px', width: '100%', justifyContent: 'space-between' }}>
         <Title level={2} style={{ margin: 0 }}>
-          분석
+          {t('analytics.title')}
         </Title>
         <RangePicker
           value={dateRange}
@@ -168,7 +170,7 @@ const Analytics = () => {
       <Row gutter={[16, 16]}>
         {/* Chart 1: Department consumption */}
         <Col xs={24} lg={12}>
-          <Card title="부서별 소모 현황" loading={loading}>
+          <Card title={t('analytics.deptConsumption')} loading={loading}>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={deptData} margin={{ top: 5, right: 20, left: 0, bottom: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -176,7 +178,7 @@ const Analytics = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend verticalAlign="top" />
-                <Bar dataKey="quantity" name="출고 수량" fill={COLORS[0]} />
+                <Bar dataKey="quantity" name={t('analytics.outboundQty')} fill={COLORS[0]} />
               </BarChart>
             </ResponsiveContainer>
           </Card>
@@ -184,7 +186,7 @@ const Analytics = () => {
 
         {/* Chart 2: Monthly inbound/outbound trend */}
         <Col xs={24} lg={12}>
-          <Card title="월별 입출고 추이" loading={loading}>
+          <Card title={t('analytics.monthlyTrend')} loading={loading}>
             <ResponsiveContainer width="100%" height={280}>
               <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -192,8 +194,8 @@ const Analytics = () => {
                 <YAxis />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="inbound" name="입고" stroke={COLORS[1]} strokeWidth={2} dot={{ r: 4 }} />
-                <Line type="monotone" dataKey="outbound" name="출고" stroke={COLORS[2]} strokeWidth={2} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="inbound" name={t('menu.inbound')} stroke={COLORS[1]} strokeWidth={2} dot={{ r: 4 }} />
+                <Line type="monotone" dataKey="outbound" name={t('menu.outbound')} stroke={COLORS[2]} strokeWidth={2} dot={{ r: 4 }} />
               </LineChart>
             </ResponsiveContainer>
           </Card>
@@ -201,7 +203,7 @@ const Analytics = () => {
 
         {/* Chart 3: Supplier cost pie */}
         <Col xs={24} lg={12}>
-          <Card title="공급업체별 비용" loading={loading}>
+          <Card title={t('analytics.supplierCost')} loading={loading}>
             <ResponsiveContainer width="100%" height={280}>
               <PieChart>
                 <Pie
@@ -227,7 +229,7 @@ const Analytics = () => {
 
         {/* Chart 4: Top 10 items horizontal bar */}
         <Col xs={24} lg={12}>
-          <Card title="소모 상위 품목 (Top 10)" loading={loading}>
+          <Card title={`${t('analytics.topItems')} (Top 10)`} loading={loading}>
             <ResponsiveContainer width="100%" height={280}>
               <BarChart
                 data={topItems}
@@ -238,7 +240,7 @@ const Analytics = () => {
                 <XAxis type="number" />
                 <YAxis dataKey="item_name" type="category" tick={{ fontSize: 11 }} width={80} />
                 <Tooltip />
-                <Bar dataKey="quantity" name="출고 수량" fill={COLORS[4]}>
+                <Bar dataKey="quantity" name={t('analytics.outboundQty')} fill={COLORS[4]}>
                   {topItems.map((_, index) => (
                     <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                   ))}

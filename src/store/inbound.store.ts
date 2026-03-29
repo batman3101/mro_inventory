@@ -8,6 +8,7 @@ interface InboundState {
   error: string | null;
   fetchInbound: () => Promise<void>;
   createInbound: (data: Parameters<typeof inboundService.createInbound>[0]) => Promise<Inbound>;
+  updateInbound: (id: string, data: Parameters<typeof inboundService.updateInbound>[1]) => Promise<Inbound>;
   deleteInbound: (id: string) => Promise<void>;
 }
 
@@ -31,6 +32,14 @@ export const useInboundStore = create<InboundState>((set) => ({
     const created = await inboundService.createInbound(data);
     set((state) => ({ inboundRecords: [created, ...state.inboundRecords] }));
     return created;
+  },
+
+  updateInbound: async (id, data) => {
+    const updated = await inboundService.updateInbound(id, data);
+    set((state) => ({
+      inboundRecords: state.inboundRecords.map((r) => (r.inbound_id === id ? updated : r)),
+    }));
+    return updated;
   },
 
   deleteInbound: async (id) => {

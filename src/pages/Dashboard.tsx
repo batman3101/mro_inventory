@@ -1,142 +1,229 @@
 import { useEffect, useState } from 'react';
-import { Row, Col, Card, Statistic, List, Tag, Badge, Button, Space, Typography } from 'antd';
+import { Row, Col, Card, Statistic, Select, DatePicker, Typography, Space } from 'antd';
 import {
-  ShoppingCartOutlined,
   InboxOutlined,
-  ExportOutlined,
   WarningOutlined,
+  CloseCircleOutlined,
+  TeamOutlined,
+  ArrowUpOutlined,
+  ArrowDownOutlined,
 } from '@ant-design/icons';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from 'recharts';
+import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
-import { useInventoryStore } from '@/store/inventory.store';
-import dayjs from 'dayjs';
+import dayjs, { type Dayjs } from 'dayjs';
 
-const { Text } = Typography;
+const { RangePicker } = DatePicker;
 
-interface ActivityItem {
-  type: 'inbound' | 'outbound';
+type PeriodType = '7days' | '1month' | 'custom';
+
+interface ChartDataPoint {
+  date: string;
+  inbound: number;
+  outbound: number;
+}
+
+interface RecentRecord {
+  item_code: string;
   item_name: string;
   quantity: number;
+  item_unit: string;
   created_at: string;
 }
 
 interface SummaryStats {
-  totalItems: number;
+  totalStock: number;
   lowStockCount: number;
-  monthlyInbound: number;
-  monthlyOutbound: number;
+  zeroStockCount: number;
+  totalSuppliers: number;
 }
 
 const Dashboard = () => {
-  const { alerts, fetchAlerts, acknowledgeAlert, resolveAlert } = useInventoryStore();
+  const { t } = useTranslation();
   const [stats, setStats] = useState<SummaryStats>({
-    totalItems: 0,
+    totalStock: 0,
     lowStockCount: 0,
-    monthlyInbound: 0,
-    monthlyOutbound: 0,
+    zeroStockCount: 0,
+    totalSuppliers: 0,
   });
-  const [recentActivity, setRecentActivity] = useState<ActivityItem[]>([]);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
+  const [recentInbound, setRecentInbound] = useState<RecentRecord[]>([]);
+  const [recentOutbound, setRecentOutbound] = useState<RecentRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [period, setPeriod] = useState<PeriodType>('7days');
+  const [customRange, setCustomRange] = useState<[Dayjs, Dayjs] | null>(null);
+
+  const getDateRange = (): [string, string] => {
+    const end = dayjs().format('YYYY-MM-DD');
+    if (period === '1month') {
+      return [dayjs().subtract(1, 'month').format('YYYY-MM-DD'), end];
+    }
+    if (period === 'custom' && customRange) {
+      return [customRange[0].format('YYYY-MM-DD'), customRange[1].format('YYYY-MM-DD')];
+    }
+    return [dayjs().subtract(6, 'day').format('YYYY-MM-DD'), end];
+  };
+
+  const fetchStats = async () => {
+    const [
+      { data: inventoryData },
+      { count: lowStock },
+      { count: zeroStock },
+      { count: suppliers },
+    ] = await Promise.all([
+      supabase.from('inventory').select('current_quantity'),
+      supabase
+        .from('inventory')
+        .select('*', { count: 'exact', head: true })
+        .gt('current_quantity', 0)
+        .lt('current_quantity', 10),
+      supabase
+        .from('inventory')
+        .select('*', { count: 'exact', head: true })
+        .eq('current_quantity', 0),
+      supabase
+        .from('suppliers')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'ACTIVE'),
+    ]);
+
+    const totalStock = (inventoryData ?? []).reduce(
+      (sum, row) => sum + (row.current_quantity ?? 0),
+      0
+    );
+
+    setStats({
+      totalStock,
+      lowStockCount: lowStock ?? 0,
+      zeroStockCount: zeroStock ?? 0,
+      totalSuppliers: suppliers ?? 0,
+    });
+  };
+
+  const fetchChartData = async () => {
+    const [startDate, endDate] = getDateRange();
+
+    const [{ data: inboundRaw }, { data: outboundRaw }] = await Promise.all([
+      supabase
+        .from('inbound')
+        .select('inbound_date, total_price')
+        .gte('inbound_date', startDate)
+        .lte('inbound_date', endDate),
+      supabase
+        .from('outbound')
+        .select('outbound_date, quantity')
+        .gte('outbound_date', startDate)
+        .lte('outbound_date', endDate),
+    ]);
+
+    const dateMap = new Map<string, { inbound: number; outbound: number }>();
+    let cursor = dayjs(startDate);
+    const endDay = dayjs(endDate);
+    while (cursor.isBefore(endDay) || cursor.isSame(endDay, 'day')) {
+      dateMap.set(cursor.format('MM/DD'), { inbound: 0, outbound: 0 });
+      cursor = cursor.add(1, 'day');
+    }
+
+    for (const row of inboundRaw ?? []) {
+      const key = dayjs(row.inbound_date).format('MM/DD');
+      if (dateMap.has(key)) {
+        dateMap.get(key)!.inbound += Number(row.total_price ?? 0);
+      }
+    }
+
+    for (const row of outboundRaw ?? []) {
+      const key = dayjs(row.outbound_date).format('MM/DD');
+      if (dateMap.has(key)) {
+        dateMap.get(key)!.outbound += Number(row.quantity ?? 0);
+      }
+    }
+
+    setChartData(
+      Array.from(dateMap.entries()).map(([date, vals]) => ({
+        date,
+        inbound: vals.inbound,
+        outbound: vals.outbound,
+      }))
+    );
+  };
+
+  const fetchRecentRecords = async () => {
+    const [{ data: inbound }, { data: outbound }] = await Promise.all([
+      supabase
+        .from('inbound')
+        .select('item_code, item_name, quantity, item_unit, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('outbound')
+        .select('item_code, item_name, quantity, item_unit, created_at')
+        .order('created_at', { ascending: false })
+        .limit(5),
+    ]);
+
+    setRecentInbound(
+      (inbound ?? []).map((r) => ({
+        item_code: r.item_code ?? '',
+        item_name: r.item_name ?? '',
+        quantity: r.quantity ?? 0,
+        item_unit: r.item_unit ?? 'EA',
+        created_at: r.created_at ?? '',
+      }))
+    );
+
+    setRecentOutbound(
+      (outbound ?? []).map((r) => ({
+        item_code: r.item_code ?? '',
+        item_name: r.item_name ?? '',
+        quantity: r.quantity ?? 0,
+        item_unit: r.item_unit ?? 'EA',
+        created_at: r.created_at ?? '',
+      }))
+    );
+  };
 
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
       try {
-        await fetchAlerts();
-
-        const now = dayjs();
-        const monthStart = now.startOf('month').toISOString();
-        const monthEnd = now.endOf('month').toISOString();
-
-        const [
-          { count: totalItems },
-          { count: lowStockCount },
-          { count: monthlyInbound },
-          { count: monthlyOutbound },
-          { data: recentInbound },
-          { data: recentOutbound },
-        ] = await Promise.all([
-          supabase.from('items').select('*', { count: 'exact', head: true }).eq('status', 'ACTIVE'),
-          supabase
-            .from('inventory')
-            .select('*, items!inner(reorder_point)', { count: 'exact', head: true })
-            .filter('current_quantity', 'lt', 'items.reorder_point'),
-          supabase
-            .from('inbound')
-            .select('*', { count: 'exact', head: true })
-            .gte('inbound_date', now.startOf('month').format('YYYY-MM-DD'))
-            .lte('inbound_date', now.endOf('month').format('YYYY-MM-DD')),
-          supabase
-            .from('outbound')
-            .select('*', { count: 'exact', head: true })
-            .gte('outbound_date', now.startOf('month').format('YYYY-MM-DD'))
-            .lte('outbound_date', now.endOf('month').format('YYYY-MM-DD')),
-          supabase
-            .from('inbound')
-            .select('item_name, quantity, created_at')
-            .order('created_at', { ascending: false })
-            .limit(5),
-          supabase
-            .from('outbound')
-            .select('item_name, quantity, created_at')
-            .order('created_at', { ascending: false })
-            .limit(5),
-        ]);
-
-        setStats({
-          totalItems: totalItems ?? 0,
-          lowStockCount: lowStockCount ?? 0,
-          monthlyInbound: monthlyInbound ?? 0,
-          monthlyOutbound: monthlyOutbound ?? 0,
-        });
-
-        const inboundActivity: ActivityItem[] = (recentInbound ?? []).map((r) => ({
-          type: 'inbound',
-          item_name: r.item_name,
-          quantity: r.quantity,
-          created_at: r.created_at,
-        }));
-
-        const outboundActivity: ActivityItem[] = (recentOutbound ?? []).map((r) => ({
-          type: 'outbound',
-          item_name: r.item_name,
-          quantity: r.quantity,
-          created_at: r.created_at,
-        }));
-
-        const merged = [...inboundActivity, ...outboundActivity].sort(
-          (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        setRecentActivity(merged.slice(0, 10));
+        await Promise.all([fetchStats(), fetchChartData(), fetchRecentRecords()]);
       } catch (error) {
-        console.error('대시보드 데이터 조회 실패:', error);
+        console.error(t('dashboard.fetchError'), error);
       } finally {
         setLoading(false);
       }
     };
-
     fetchAll();
-  }, [fetchAlerts]);
+  }, []);
 
-  const handleAcknowledge = async (alertId: string) => {
-    try {
-      await acknowledgeAlert(alertId);
-    } catch (error) {
-      console.error('알림 확인 처리 실패:', error);
-    }
+  useEffect(() => {
+    fetchChartData();
+  }, [period, customRange]);
+
+  const formatYAxis = (value: number) => {
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
+    return String(value);
   };
 
-  const handleResolve = async (alertId: string) => {
-    try {
-      await resolveAlert(alertId, 'admin');
-    } catch (error) {
-      console.error('알림 해결 처리 실패:', error);
-    }
+  const getPeriodLabel = () => {
+    if (period === '7days') return t('dashboard.period7days');
+    if (period === '1month') return t('dashboard.period1month');
+    return t('dashboard.periodCustom');
   };
 
   return (
     <div style={{ padding: '24px' }}>
-      <Typography.Title level={2} style={{ marginBottom: '24px' }}>
-        MRO 재고 대시보드
+      <Typography.Title level={3} style={{ marginBottom: '24px' }}>
+        {t('dashboard.title')}
       </Typography.Title>
 
       {/* Summary Cards */}
@@ -144,10 +231,10 @@ const Dashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
-              title="총 소모품 수"
-              value={stats.totalItems}
-              prefix={<ShoppingCartOutlined />}
-              suffix="종"
+              title={t('dashboard.totalStock')}
+              value={stats.totalStock}
+              prefix={<InboxOutlined />}
+              suffix={t('dashboard.unitSuffix')}
               valueStyle={{ color: '#2563eb' }}
             />
           </Card>
@@ -155,128 +242,157 @@ const Dashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
-              title="재고 부족 품목"
+              title={t('dashboard.lowStock')}
               value={stats.lowStockCount}
               prefix={<WarningOutlined />}
-              suffix="종"
-              valueStyle={{ color: stats.lowStockCount > 0 ? '#ef4444' : '#10b981' }}
+              valueStyle={{ color: stats.lowStockCount > 0 ? '#f59e0b' : '#10b981' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
-              title="이번 달 입고"
-              value={stats.monthlyInbound}
-              prefix={<InboxOutlined />}
-              suffix="건"
-              valueStyle={{ color: '#10b981' }}
+              title={t('dashboard.zeroStock')}
+              value={stats.zeroStockCount}
+              prefix={<CloseCircleOutlined />}
+              valueStyle={{ color: stats.zeroStockCount > 0 ? '#ef4444' : '#10b981' }}
             />
           </Card>
         </Col>
         <Col xs={24} sm={12} lg={6}>
           <Card loading={loading}>
             <Statistic
-              title="이번 달 출고"
-              value={stats.monthlyOutbound}
-              prefix={<ExportOutlined />}
-              suffix="건"
-              valueStyle={{ color: '#f59e0b' }}
+              title={t('dashboard.totalSuppliers')}
+              value={stats.totalSuppliers}
+              prefix={<TeamOutlined />}
+              valueStyle={{ color: '#8b5cf6' }}
             />
           </Card>
         </Col>
       </Row>
 
-      <Row gutter={[16, 16]}>
-        {/* Reorder Alerts Panel */}
-        <Col xs={24} lg={14}>
-          <Card
-            title={
-              <Space>
-                <Badge count={alerts.length} color="#ef4444" />
-                <span>재주문 알림</span>
-              </Space>
-            }
-            loading={loading}
-          >
-            {alerts.length === 0 ? (
-              <Text type="secondary">현재 재주문 알림이 없습니다.</Text>
-            ) : (
-              <List
-                dataSource={alerts}
-                renderItem={(alert) => (
-                  <List.Item
-                    actions={[
-                      <Button
-                        key="ack"
-                        size="small"
-                        onClick={() => handleAcknowledge(alert.alert_id)}
-                      >
-                        확인
-                      </Button>,
-                      <Button
-                        key="resolve"
-                        size="small"
-                        type="primary"
-                        onClick={() => handleResolve(alert.alert_id)}
-                      >
-                        해결
-                      </Button>,
-                    ]}
-                  >
-                    <List.Item.Meta
-                      title={
-                        <Space>
-                          <WarningOutlined style={{ color: '#ef4444' }} />
-                          <Text strong>{alert.item_name}</Text>
-                          <Text type="secondary" style={{ fontSize: '12px' }}>
-                            ({alert.item_code})
-                          </Text>
-                        </Space>
-                      }
-                      description={
-                        <Space>
-                          <Tag color="red">현재: {alert.current_quantity}</Tag>
-                          <Tag color="blue">재주문 기준: {alert.reorder_point}</Tag>
-                        </Space>
-                      }
-                    />
-                  </List.Item>
-                )}
+      {/* Chart */}
+      <Card
+        loading={loading}
+        title={`${getPeriodLabel()} ${t('dashboard.chartTitle')}`}
+        extra={
+          <Space>
+            <Select
+              value={period}
+              onChange={(val) => setPeriod(val)}
+              style={{ width: 160 }}
+            >
+              <Select.Option value="7days">{t('dashboard.period7days')}</Select.Option>
+              <Select.Option value="1month">{t('dashboard.period1month')}</Select.Option>
+              <Select.Option value="custom">{t('dashboard.periodCustom')}</Select.Option>
+            </Select>
+            {period === 'custom' && (
+              <RangePicker
+                size="small"
+                onChange={(dates) => {
+                  if (dates && dates[0] && dates[1]) {
+                    setCustomRange([dates[0], dates[1]]);
+                  }
+                }}
               />
+            )}
+          </Space>
+        }
+        style={{ marginBottom: '24px' }}
+      >
+        <ResponsiveContainer width="100%" height={360}>
+          <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" />
+            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
+            <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 12 }} />
+            <Tooltip formatter={(value: number) => value.toLocaleString()} />
+            <Legend />
+            <Line
+              type="monotone"
+              dataKey="inbound"
+              name={t('dashboard.inboundAmount')}
+              stroke="#22c55e"
+              strokeWidth={2}
+              dot={{ r: 5, fill: '#22c55e' }}
+              activeDot={{ r: 7 }}
+            />
+            <Line
+              type="monotone"
+              dataKey="outbound"
+              name={t('dashboard.outboundAmount')}
+              stroke="#ef4444"
+              strokeWidth={2}
+              dot={{ r: 5, fill: '#ef4444' }}
+              activeDot={{ r: 7 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </Card>
+
+      {/* Recent Inbound / Outbound */}
+      <Row gutter={[16, 16]}>
+        <Col xs={24} lg={12}>
+          <Card title={t('dashboard.recentInbound')} loading={loading}>
+            {recentInbound.length === 0 ? (
+              <Typography.Text type="secondary">{t('dashboard.noRecentInbound')}</Typography.Text>
+            ) : (
+              recentInbound.map((record, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '10px 0',
+                    borderBottom: idx < recentInbound.length - 1 ? '1px solid #f0f0f0' : 'none',
+                  }}
+                >
+                  <ArrowUpOutlined style={{ color: '#22c55e', fontSize: 16, marginRight: 12 }} />
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontWeight: 500 }}>
+                      {record.item_code} - {record.item_name}
+                    </span>
+                    <span style={{ marginLeft: 8, color: '#666' }}>
+                      ({record.quantity} {record.item_unit})
+                    </span>
+                  </div>
+                  <span style={{ color: '#999', fontSize: 12 }}>
+                    ({dayjs(record.created_at).format('YYYY-MM-DD HH:mm')})
+                  </span>
+                </div>
+              ))
             )}
           </Card>
         </Col>
-
-        {/* Recent Activity */}
-        <Col xs={24} lg={10}>
-          <Card title="최근 입출고 내역" loading={loading}>
-            <List
-              dataSource={recentActivity}
-              renderItem={(item) => (
-                <List.Item>
-                  <List.Item.Meta
-                    title={
-                      <Space>
-                        <Tag color={item.type === 'inbound' ? 'green' : 'orange'}>
-                          {item.type === 'inbound' ? '입고' : '출고'}
-                        </Tag>
-                        <Text>{item.item_name}</Text>
-                      </Space>
-                    }
-                    description={
-                      <Space>
-                        <Text type="secondary">수량: {item.quantity}</Text>
-                        <Text type="secondary">
-                          {dayjs(item.created_at).format('MM/DD HH:mm')}
-                        </Text>
-                      </Space>
-                    }
-                  />
-                </List.Item>
-              )}
-              locale={{ emptyText: '최근 거래 내역이 없습니다.' }}
-            />
+        <Col xs={24} lg={12}>
+          <Card title={t('dashboard.recentOutbound')} loading={loading}>
+            {recentOutbound.length === 0 ? (
+              <Typography.Text type="secondary">{t('dashboard.noRecentOutbound')}</Typography.Text>
+            ) : (
+              recentOutbound.map((record, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    padding: '10px 0',
+                    borderBottom: idx < recentOutbound.length - 1 ? '1px solid #f0f0f0' : 'none',
+                  }}
+                >
+                  <ArrowDownOutlined style={{ color: '#ef4444', fontSize: 16, marginRight: 12 }} />
+                  <div style={{ flex: 1 }}>
+                    <span style={{ fontWeight: 500 }}>
+                      {record.item_code} - {record.item_name}
+                    </span>
+                    <span style={{ marginLeft: 8, color: '#666' }}>
+                      ({record.quantity} {record.item_unit})
+                    </span>
+                  </div>
+                  <span style={{ color: '#999', fontSize: 12 }}>
+                    ({dayjs(record.created_at).format('YYYY-MM-DD HH:mm')})
+                  </span>
+                </div>
+              ))
+            )}
           </Card>
         </Col>
       </Row>

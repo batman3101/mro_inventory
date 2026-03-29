@@ -1,12 +1,16 @@
 import { supabase } from '@/lib/supabase';
 import type { Outbound } from '@/types/database.types';
+import { getOptionalLocationId } from '@/services/locationContext';
 
 export async function getAllOutbound(): Promise<Outbound[]> {
-  const { data, error } = await supabase
+  const locationId = getOptionalLocationId();
+  let query = supabase
     .from('outbound')
-    .select(
-      '*, items(item_code, item_name, unit), departments(department_name)'
-    )
+    .select('*, items(item_code, item_name, unit), departments(department_name)');
+  if (locationId) {
+    query = query.eq('location_id', locationId);
+  }
+  const { data, error } = await query
     .order('outbound_date', { ascending: false })
     .order('created_at', { ascending: false });
 

@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase';
 import type { Inventory, ReorderAlert } from '@/types/database.types';
+import { getOptionalLocationId } from '@/services/locationContext';
 
 export interface InventoryWithItem extends Inventory {
   item_code: string;
@@ -15,10 +16,14 @@ export interface ReorderAlertWithItem extends ReorderAlert {
 }
 
 export async function getAllInventory(): Promise<InventoryWithItem[]> {
-  const { data, error } = await supabase
+  const locationId = getOptionalLocationId();
+  let query = supabase
     .from('inventory')
-    .select('*, items(item_code, item_name, unit, reorder_point, min_stock)')
-    .order('items(item_code)', { ascending: true });
+    .select('*, items(item_code, item_name, unit, reorder_point, min_stock)');
+  if (locationId) {
+    query = query.eq('location_id', locationId);
+  }
+  const { data, error } = await query.order('items(item_code)', { ascending: true });
 
   if (error) {
     throw new Error(`재고 목록 조회 실패: ${error.message}`);
@@ -77,11 +82,15 @@ export async function updateQuantity(
 }
 
 export async function getReorderAlerts(): Promise<ReorderAlertWithItem[]> {
-  const { data, error } = await supabase
+  const locationId = getOptionalLocationId();
+  let query = supabase
     .from('reorder_alerts')
     .select('*, items(item_name, item_code)')
-    .eq('status', 'OPEN')
-    .order('created_at', { ascending: false });
+    .eq('status', 'OPEN');
+  if (locationId) {
+    query = query.eq('location_id', locationId);
+  }
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     throw new Error(`재주문 알림 조회 실패: ${error.message}`);

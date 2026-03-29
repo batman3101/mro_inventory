@@ -1,12 +1,16 @@
 import { supabase } from '@/lib/supabase';
 import type { Inbound } from '@/types/database.types';
+import { getOptionalLocationId } from '@/services/locationContext';
 
 export async function getAllInbound(): Promise<Inbound[]> {
-  const { data, error } = await supabase
+  const locationId = getOptionalLocationId();
+  let query = supabase
     .from('inbound')
-    .select(
-      '*, items(item_code, item_name, unit), suppliers(supplier_name)'
-    )
+    .select('*, items(item_code, item_name, unit), suppliers(supplier_name)');
+  if (locationId) {
+    query = query.eq('location_id', locationId);
+  }
+  const { data, error } = await query
     .order('inbound_date', { ascending: false })
     .order('created_at', { ascending: false });
 
@@ -135,6 +139,24 @@ export async function createInbound(
   }
 
   return getInboundById(created.inbound_id) as Promise<Inbound>;
+}
+
+export async function updateInbound(
+  id: string,
+  data: Pick<Inbound, 'item_id' | 'supplier_id' | 'quantity' | 'unit_price' | 'currency' | 'notes' | 'inbound_date'>
+): Promise<Inbound> {
+  const total_price = data.quantity * data.unit_price;
+
+  const { error } = await supabase
+    .from('inbound')
+    .update({ ...data, total_price })
+    .eq('inbound_id', id);
+
+  if (error) {
+    throw new Error(`입고 수정 실패: ${error.message}`);
+  }
+
+  return getInboundById(id) as Promise<Inbound>;
 }
 
 export async function deleteInbound(id: string): Promise<void> {

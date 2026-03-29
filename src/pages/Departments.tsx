@@ -43,7 +43,7 @@ const Departments = () => {
       const data = await getAllDepartments();
       setDepartments(data);
     } catch {
-      message.error('부서 목록을 불러오지 못했습니다.');
+      message.error(t('departments.fetchError'));
     } finally {
       setLoading(false);
     }
@@ -91,19 +91,19 @@ const Departments = () => {
           department_name: values.department_name,
           description: values.description ?? null,
         });
-        message.success('부서가 수정되었습니다.');
+        message.success(t('departments.updateSuccess'));
       } else {
         await createDepartment({
           department_code: values.department_code,
           department_name: values.department_name,
           description: values.description ?? null,
         });
-        message.success('부서가 등록되었습니다.');
+        message.success(t('departments.createSuccess'));
       }
       handleModalCancel();
       fetchData();
     } catch {
-      message.error('저장에 실패했습니다.');
+      message.error(t('common.error'));
     } finally {
       setSubmitting(false);
     }
@@ -112,30 +112,30 @@ const Departments = () => {
   const handleDelete = async (departmentId: string) => {
     try {
       await deleteDepartment(departmentId);
-      message.success('부서가 삭제되었습니다.');
+      message.success(t('departments.deleteSuccess'));
       setDepartments((prev) => prev.filter((d) => d.department_id !== departmentId));
     } catch {
-      message.error('삭제에 실패했습니다.');
+      message.error(t('common.error'));
     }
   };
 
   const columns: ColumnsType<Department> = [
     {
-      title: '부서코드',
+      title: t('departments.departmentCode'),
       dataIndex: 'department_code',
       key: 'department_code',
       width: 140,
       sorter: (a, b) => a.department_code.localeCompare(b.department_code),
     },
     {
-      title: '부서명',
+      title: t('departments.departmentName'),
       dataIndex: 'department_name',
       key: 'department_name',
       width: 200,
       sorter: (a, b) => a.department_name.localeCompare(b.department_name),
     },
     {
-      title: '설명',
+      title: t('items.description'),
       dataIndex: 'description',
       key: 'description',
       render: (val: string | null) => val ?? '-',
@@ -153,7 +153,7 @@ const Departments = () => {
             onClick={() => openEditModal(record)}
           />
           <Popconfirm
-            title="이 부서를 삭제하시겠습니까?"
+            title={t('departments.deleteConfirm')}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
             onConfirm={() => handleDelete(record.department_id)}
@@ -169,9 +169,9 @@ const Departments = () => {
     <div style={{ padding: '24px' }}>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: t('common.appName') }, { title: '부서 관리' }]}
+        items={[{ title: t('common.appName') }, { title: t('departments.title') }]}
       />
-      <h2 style={{ marginBottom: 16 }}>부서 관리</h2>
+      <h2 style={{ marginBottom: 16 }}>{t('departments.title')}</h2>
 
       <Card>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
@@ -188,13 +188,13 @@ const Departments = () => {
           pagination={{
             pageSize: 20,
             showSizeChanger: false,
-            showTotal: (total) => `총 ${total}건`,
+            showTotal: (total) => t('common.total', { count: total }),
           }}
         />
       </Card>
 
       <Modal
-        title={editingDept ? '부서 수정' : '부서 등록'}
+        title={editingDept ? t('departments.editDepartment') : t('departments.createDepartment')}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={handleModalCancel}
@@ -206,19 +206,19 @@ const Departments = () => {
         <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
           <Form.Item
             name="department_code"
-            label="부서코드"
-            rules={[{ required: true, message: '부서코드를 입력하세요' }]}
+            label={t('departments.departmentCode')}
+            rules={[{ required: true, message: t('departments.departmentCodeRequired') }]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="department_name"
-            label="부서명"
-            rules={[{ required: true, message: '부서명을 입력하세요' }]}
+            label={t('departments.departmentName')}
+            rules={[{ required: true, message: t('departments.departmentNameRequired') }]}
           >
             <Input />
           </Form.Item>
-          <Form.Item name="description" label="설명">
+          <Form.Item name="description" label={t('items.description')}>
             <Input.TextArea rows={3} />
           </Form.Item>
         </Form>

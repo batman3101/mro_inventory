@@ -3,14 +3,13 @@ import { useTranslation } from 'react-i18next';
 import { Button, Menu } from 'antd';
 import {
   DashboardOutlined,
-  ShoppingOutlined,
-  DatabaseOutlined,
-  ImportOutlined,
-  ExportOutlined,
-  ShopOutlined,
+  ContainerOutlined,
+  AppstoreOutlined,
+  LoginOutlined,
+  LogoutOutlined as LogoutIcon,
   TeamOutlined,
+  UserSwitchOutlined,
   BarChartOutlined,
-  UserOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { useAuthStore } from '@/store/auth.store';
@@ -25,18 +24,18 @@ const Sidebar = ({ collapsed }: SidebarProps) => {
   const navigate = useNavigate();
   const location = useLocation();
   const { t } = useTranslation();
+  const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
 
   const menuItems = [
     { key: '/', icon: <DashboardOutlined />, label: t('menu.dashboard') },
-    { key: '/items', icon: <ShoppingOutlined />, label: t('menu.items') },
-    { key: '/inventory', icon: <DatabaseOutlined />, label: t('menu.inventory') },
-    { key: '/inbound', icon: <ImportOutlined />, label: t('menu.inbound') },
-    { key: '/outbound', icon: <ExportOutlined />, label: t('menu.outbound') },
-    { key: '/suppliers', icon: <ShopOutlined />, label: t('menu.suppliers') },
-    { key: '/departments', icon: <TeamOutlined />, label: t('menu.departments') },
+    { key: '/inventory', icon: <ContainerOutlined />, label: t('menu.inventory') },
+    { key: '/items', icon: <AppstoreOutlined />, label: t('menu.items') },
+    { key: '/inbound', icon: <LoginOutlined />, label: t('menu.inbound') },
+    { key: '/outbound', icon: <LogoutIcon />, label: t('menu.outbound') },
+    { key: '/suppliers', icon: <TeamOutlined />, label: t('menu.suppliers') },
+    { key: '/users', icon: <UserSwitchOutlined />, label: t('menu.users') },
     { key: '/analytics', icon: <BarChartOutlined />, label: t('menu.analytics') },
-    { key: '/users', icon: <UserOutlined />, label: t('menu.users') },
   ];
 
   const selectedKey = location.pathname === '/' ? '/' : `/${location.pathname.split('/')[1]}`;
@@ -73,20 +72,25 @@ const Sidebar = ({ collapsed }: SidebarProps) => {
           borderTop: '1px solid #374151',
           display: 'flex',
           flexDirection: 'column',
-          gap: 8,
+          gap: 12,
         }}
       >
-        {!collapsed && <LocationSelector />}
-        {!collapsed && <LanguageSwitcher />}
+        {!collapsed && user && (
+          <div style={{ color: '#d1d5db', fontSize: 13, textAlign: 'center', wordBreak: 'break-all' }}>
+            {user.email}
+          </div>
+        )}
         <Button
-          type="text"
+          danger
+          type="primary"
           icon={<LogoutOutlined />}
           onClick={logout}
-          style={{ color: '#9ca3af', justifyContent: 'flex-start' }}
           block
         >
           {collapsed ? '' : t('auth.logout')}
         </Button>
+        {!collapsed && <LocationSelector />}
+        {!collapsed && <LanguageSwitcher />}
       </div>
     </div>
   );

@@ -33,13 +33,6 @@ const ROLE_COLOR: Record<string, string> = {
   viewer: 'default',
 };
 
-const ROLE_LABEL: Record<string, string> = {
-  system_admin: '시스템관리자',
-  admin: '관리자',
-  user: '사용자',
-  viewer: '조회자',
-};
-
 interface UserFormValues {
   username: string;
   full_name: string;
@@ -122,7 +115,7 @@ const Users = () => {
           position: values.position ?? null,
           is_active: values.is_active,
         });
-        message.success('사용자가 수정되었습니다.');
+        message.success(t('users.updateSuccess'));
       } else {
         await createUser({
           username: values.username,
@@ -135,12 +128,12 @@ const Users = () => {
           position: values.position ?? null,
           is_active: values.is_active,
         });
-        message.success('사용자가 등록되었습니다.');
+        message.success(t('users.createSuccess'));
       }
       handleModalCancel();
       fetchUsers();
     } catch {
-      message.error('저장에 실패했습니다.');
+      message.error(t('common.error'));
     } finally {
       setSubmitting(false);
     }
@@ -150,47 +143,47 @@ const Users = () => {
     try {
       if (user.is_active) {
         await deactivateUser(user.user_id);
-        message.success('사용자를 비활성화했습니다.');
+        message.success(t('users.deactivateSuccess'));
       } else {
         await activateUser(user.user_id);
-        message.success('사용자를 활성화했습니다.');
+        message.success(t('users.activateSuccess'));
       }
     } catch {
-      message.error('상태 변경에 실패했습니다.');
+      message.error(t('common.error'));
     }
   };
 
   const columns: ColumnsType<SafeUser> = [
     {
-      title: '사용자명',
+      title: t('users.username'),
       dataIndex: 'username',
       key: 'username',
       width: 130,
       sorter: (a, b) => a.username.localeCompare(b.username),
     },
     {
-      title: '이름',
+      title: t('users.fullName'),
       dataIndex: 'full_name',
       key: 'full_name',
       width: 130,
     },
     {
-      title: '이메일',
+      title: t('auth.email'),
       dataIndex: 'email',
       key: 'email',
       width: 200,
     },
     {
-      title: '역할',
+      title: t('users.role'),
       dataIndex: 'role',
       key: 'role',
       width: 120,
       render: (role: string) => (
-        <Tag color={ROLE_COLOR[role] ?? 'default'}>{ROLE_LABEL[role] ?? role}</Tag>
+        <Tag color={ROLE_COLOR[role] ?? 'default'}>{t(`users.roles.${role}` as never) ?? role}</Tag>
       ),
     },
     {
-      title: '부서',
+      title: t('outbound.department'),
       dataIndex: 'department_id',
       key: 'department_id',
       width: 130,
@@ -200,19 +193,19 @@ const Users = () => {
       },
     },
     {
-      title: '직위',
+      title: t('users.position'),
       dataIndex: 'position',
       key: 'position',
       width: 110,
       render: (val: string | null) => val ?? '-',
     },
     {
-      title: '상태',
+      title: t('common.status'),
       dataIndex: 'is_active',
       key: 'is_active',
       width: 80,
       render: (active: boolean) => (
-        <Tag color={active ? 'green' : 'red'}>{active ? '활성' : '비활성'}</Tag>
+        <Tag color={active ? 'green' : 'red'}>{active ? t('common.active') : t('common.inactive')}</Tag>
       ),
     },
     ...(isAdmin
@@ -234,7 +227,7 @@ const Users = () => {
                   danger={record.is_active}
                   onClick={() => handleToggleActive(record)}
                 >
-                  {record.is_active ? '비활성화' : '활성화'}
+                  {record.is_active ? t('users.deactivate') : t('users.activate')}
                 </Button>
               </Space>
             ),
@@ -247,9 +240,9 @@ const Users = () => {
     <div style={{ padding: '24px' }}>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: t('common.appName') }, { title: '사용자 관리' }]}
+        items={[{ title: t('common.appName') }, { title: t('users.title') }]}
       />
-      <h2 style={{ marginBottom: 16 }}>사용자 관리</h2>
+      <h2 style={{ marginBottom: 16 }}>{t('users.title')}</h2>
 
       <Card>
         {isAdmin && (
@@ -268,7 +261,7 @@ const Users = () => {
           pagination={{
             pageSize: 20,
             showSizeChanger: false,
-            showTotal: (total) => `총 ${total}건`,
+            showTotal: (total) => t('common.total', { count: total }),
           }}
           scroll={{ x: 900 }}
         />
@@ -276,7 +269,7 @@ const Users = () => {
 
       {isAdmin && (
         <Modal
-          title={editingUser ? '사용자 수정' : '사용자 등록'}
+          title={editingUser ? t('users.editUser') : t('users.createUser')}
           open={modalOpen}
           onOk={handleSubmit}
           onCancel={handleModalCancel}
@@ -288,42 +281,42 @@ const Users = () => {
           <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
             <Form.Item
               name="username"
-              label="사용자명"
-              rules={[{ required: true, message: '사용자명을 입력하세요' }]}
+              label={t('users.username')}
+              rules={[{ required: true, message: t('users.usernameRequired') }]}
             >
               <Input disabled={!!editingUser} />
             </Form.Item>
             <Form.Item
               name="full_name"
-              label="이름"
-              rules={[{ required: true, message: '이름을 입력하세요' }]}
+              label={t('users.fullName')}
+              rules={[{ required: true, message: t('users.fullNameRequired') }]}
             >
               <Input />
             </Form.Item>
             <Form.Item
               name="email"
-              label="이메일"
+              label={t('auth.email')}
               rules={[
-                { required: true, message: '이메일을 입력하세요' },
-                { type: 'email', message: '올바른 이메일 형식을 입력하세요' },
+                { required: true, message: t('users.emailRequired') },
+                { type: 'email', message: t('users.emailInvalid') },
               ]}
             >
               <Input />
             </Form.Item>
             <Form.Item
               name="role"
-              label="역할"
-              rules={[{ required: true, message: '역할을 선택하세요' }]}
+              label={t('users.role')}
+              rules={[{ required: true, message: t('users.roleRequired') }]}
             >
               <Select>
-                <Option value="system_admin">시스템관리자</Option>
-                <Option value="admin">관리자</Option>
-                <Option value="user">사용자</Option>
-                <Option value="viewer">조회자</Option>
+                <Option value="system_admin">{t('users.roles.system_admin')}</Option>
+                <Option value="admin">{t('users.roles.admin')}</Option>
+                <Option value="user">{t('users.roles.user')}</Option>
+                <Option value="viewer">{t('users.roles.viewer')}</Option>
               </Select>
             </Form.Item>
-            <Form.Item name="department_id" label="부서">
-              <Select allowClear placeholder="부서 선택">
+            <Form.Item name="department_id" label={t('outbound.department')}>
+              <Select allowClear placeholder={t('departments.selectDepartment')}>
                 {departments.map((d) => (
                   <Option key={d.department_id} value={d.department_id}>
                     {d.department_name}
@@ -331,8 +324,8 @@ const Users = () => {
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item name="location_id" label="위치">
-              <Select allowClear placeholder="위치 선택">
+            <Form.Item name="location_id" label={t('inventory.storageLocation')}>
+              <Select allowClear placeholder={t('common.selectLocation')}>
                 {locations.map((l) => (
                   <Option key={l.location_id} value={l.location_id}>
                     {l.location_name}
@@ -340,13 +333,13 @@ const Users = () => {
                 ))}
               </Select>
             </Form.Item>
-            <Form.Item name="phone_number" label="전화번호">
+            <Form.Item name="phone_number" label={t('users.phone')}>
               <Input />
             </Form.Item>
-            <Form.Item name="position" label="직위">
+            <Form.Item name="position" label={t('users.position')}>
               <Input />
             </Form.Item>
-            <Form.Item name="is_active" label="활성 상태" valuePropName="checked">
+            <Form.Item name="is_active" label={t('users.isActive')} valuePropName="checked">
               <Switch />
             </Form.Item>
           </Form>

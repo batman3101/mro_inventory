@@ -1,202 +1,266 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Table,
   Input,
   Card,
   Tag,
   Button,
-  Space,
-  Alert,
-  Badge,
-  Breadcrumb,
+  Row,
+  Col,
+  Statistic,
+  Modal,
+  Form,
+  InputNumber,
   message,
 } from 'antd';
-import { SearchOutlined, BellOutlined } from '@ant-design/icons';
+import {
+  SearchOutlined,
+  UploadOutlined,
+  DownloadOutlined,
+  EditOutlined,
+  WarningOutlined,
+} from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
+import * as XLSX from 'xlsx';
 import type { ColumnsType } from 'antd/es/table';
 import { useInventoryStore } from '@/store/inventory.store';
 import type { InventoryWithItem } from '@/services/inventory.service';
 
-const getQuantityColor = (
-  qty: number,
-  reorderPoint: number,
-  minStock: number
-): string => {
-  if (qty >= reorderPoint) return 'green';
-  if (qty >= minStock) return 'orange';
-  return 'red';
-};
-
-const getQuantityStatus = (
-  qty: number,
-  reorderPoint: number,
-  minStock: number
-): string => {
-  if (qty >= reorderPoint) return '정상';
-  if (qty >= minStock) return '주의';
-  return '부족';
-};
-
 const Inventory = () => {
   const { t } = useTranslation();
-  const { inventoryItems, alerts, isLoading, fetchInventory, fetchAlerts, acknowledgeAlert, resolveAlert } =
-    useInventoryStore();
+  const { inventoryItems, isLoading, fetchInventory } = useInventoryStore();
   const [searchQuery, setSearchQuery] = useState('');
+  const [editModal, setEditModal] = useState(false);
+  const [editingItem, setEditingItem] = useState<InventoryWithItem | null>(null);
+  const [form] = Form.useForm();
 
   useEffect(() => {
     fetchInventory();
-    fetchAlerts();
   }, []);
 
-  const filteredItems = inventoryItems.filter((item) => {
-    if (searchQuery === '') return true;
+  const filteredItems = useMemo(() => {
+    if (searchQuery === '') return inventoryItems;
     const q = searchQuery.toLowerCase();
-    return item.item_name.toLowerCase().includes(q) || item.item_code.toLowerCase().includes(q);
-  });
+    return inventoryItems.filter(
+      (item) =>
+        item.item_name.toLowerCase().includes(q) ||
+        item.item_code.toLowerCase().includes(q)
+    );
+  }, [inventoryItems, searchQuery]);
 
-  const handleAcknowledge = async (alertId: string) => {
+  const stats = useMemo(() => {
+    const totalItems = inventoryItems.length;
+    const totalQuantity = inventoryItems.reduce((sum, i) => sum + i.current_quantity, 0);
+    const lowStockCount = inventoryItems.filter((i) => i.current_quantity < i.min_stock).length;
+    const locations = new Set(inventoryItems.map((i) => i.storage_location).filter(Boolean));
+    return { totalItems, totalQuantity, lowStockCount, locationCount: locations.size || 1 };
+  }, [inventoryItems]);
+
+  const openEditModal = (record: InventoryWithItem) => {
+    setEditingItem(record);
+    form.setFieldsValue({ current_quantity: record.current_quantity });
+    setEditModal(true);
+  };
+
+  const handleEditSubmit = async () => {
+    const values = await form.validateFields();
+    if (!editingItem) return;
     try {
-      await acknowledgeAlert(alertId);
-      message.success('알림이 확인 처리되었습니다.');
+      const { updateQuantity } = useInventoryStore.getState();
+      await updateQuantity(editingItem.inventory_id, values.current_quantity, 'admin');
+      message.success(t('inventory.updateSuccess'));
+      setEditModal(false);
+      setEditingItem(null);
+      fetchInventory();
     } catch {
-      message.error('처리에 실패했습니다.');
+      message.error(t('inventory.processFailed'));
     }
   };
 
-  const handleResolve = async (alertId: string) => {
-    try {
-      await resolveAlert(alertId, 'system');
-      message.success('알림이 해결 처리되었습니다.');
-    } catch {
-      message.error('처리에 실패했습니다.');
-    }
+  const handleExport = () => {
+    const exportData = filteredItems.map((item) => ({
+      [t('items.itemCode')]: item.item_code,
+      [t('items.itemName')]: item.item_name,
+      [t('items.category')]: item.category_name ?? '',
+      [t('inventory.currentQuantity')]: item.current_quantity,
+      [t('items.minStock')]: item.min_stock,
+      [t('items.unit')]: item.unit,
+      [t('inventory.location')]: item.storage_location || 'main',
+      [t('inventory.lastCountDate')]: item.last_count_date ? item.last_count_date.slice(0, 16).replace('T', ' ') : '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, t('inventory.title'));
+    XLSX.writeFile(wb, `MRO_${t('inventory.title')}.xlsx`);
+  };
+
+  const handleBulkImport = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.xlsx,.xls';
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0];
+      if (!file) return;
+      message.info(t('inventory.importProcessing'));
+      // TODO: Implement bulk import with Supabase
+    };
+    input.click();
   };
 
   const columns: ColumnsType<InventoryWithItem> = [
     {
-      title: '품목코드',
+      title: t('items.itemCode'),
       dataIndex: 'item_code',
       key: 'item_code',
-      width: 140,
+      width: 120,
       sorter: (a, b) => a.item_code.localeCompare(b.item_code),
     },
     {
-      title: '품목명',
+      title: t('items.itemName'),
       dataIndex: 'item_name',
       key: 'item_name',
-      width: 180,
+      width: 240,
       sorter: (a, b) => a.item_name.localeCompare(b.item_name),
     },
     {
-      title: '단위',
-      dataIndex: 'unit',
-      key: 'unit',
-      width: 70,
+      title: t('items.category'),
+      dataIndex: 'category_name',
+      key: 'category_name',
+      width: 120,
+      sorter: (a, b) => (a.category_name ?? '').localeCompare(b.category_name ?? ''),
+      filters: Array.from(new Set(inventoryItems.map((i) => i.category_name).filter(Boolean))).map(
+        (c) => ({ text: c!, value: c! })
+      ),
+      onFilter: (value, record) => record.category_name === value,
     },
     {
-      title: '현재수량',
+      title: t('inventory.currentQuantity'),
       dataIndex: 'current_quantity',
       key: 'current_quantity',
       width: 110,
       align: 'right',
       sorter: (a, b) => a.current_quantity - b.current_quantity,
-      render: (qty: number, record) => (
-        <Tag color={getQuantityColor(qty, record.reorder_point, record.min_stock)}>
-          {qty} ({getQuantityStatus(qty, record.reorder_point, record.min_stock)})
-        </Tag>
-      ),
+      render: (qty: number, record) => {
+        if (qty === 0 || qty < record.min_stock) {
+          return (
+            <span style={{ color: '#ef4444', fontWeight: 600 }}>
+              {qty} <WarningOutlined style={{ fontSize: 12 }} />
+            </span>
+          );
+        }
+        return qty;
+      },
     },
     {
-      title: '재주문점',
-      dataIndex: 'reorder_point',
-      key: 'reorder_point',
-      width: 90,
-      align: 'right',
-    },
-    {
-      title: '최소재고',
+      title: t('items.minStock'),
       dataIndex: 'min_stock',
       key: 'min_stock',
-      width: 90,
+      width: 100,
       align: 'right',
+      sorter: (a, b) => a.min_stock - b.min_stock,
     },
     {
-      title: '보관위치',
+      title: t('items.unit'),
+      dataIndex: 'unit',
+      key: 'unit',
+      width: 70,
+      sorter: (a, b) => a.unit.localeCompare(b.unit),
+    },
+    {
+      title: t('inventory.location'),
       dataIndex: 'storage_location',
       key: 'storage_location',
-      width: 130,
+      width: 90,
+      render: (val: string) => <Tag color="blue">{val || 'main'}</Tag>,
+      sorter: (a, b) => (a.storage_location ?? '').localeCompare(b.storage_location ?? ''),
     },
     {
-      title: '최종재고일',
+      title: t('inventory.lastCountDate'),
       dataIndex: 'last_count_date',
       key: 'last_count_date',
-      width: 120,
-      render: (val: string) => (val ? val.slice(0, 10) : '-'),
+      width: 150,
+      sorter: (a, b) => (a.last_count_date ?? '').localeCompare(b.last_count_date ?? ''),
+      render: (val: string) => (val ? val.slice(0, 16).replace('T', ' ') : '-'),
+    },
+    {
+      title: t('common.actions'),
+      key: 'actions',
+      width: 80,
+      fixed: 'right',
+      render: (_, record) => (
+        <Button
+          type="link"
+          icon={<EditOutlined />}
+          onClick={() => openEditModal(record)}
+        >
+          {t('common.edit')}
+        </Button>
+      ),
     },
   ];
 
   return (
     <div style={{ padding: '24px' }}>
-      <Breadcrumb
-        style={{ marginBottom: 16 }}
-        items={[{ title: t('common.appName') }, { title: '재고 관리' }]}
-      />
-      <h2 style={{ marginBottom: 16 }}>재고 관리</h2>
+      <h2 style={{ marginBottom: 16 }}>{t('inventory.listTitle')}</h2>
 
-      {alerts.length > 0 && (
-        <Card
-          title={
-            <Space>
-              <BellOutlined style={{ color: '#faad14' }} />
-              <span>재주문 알림</span>
-              <Badge count={alerts.length} />
-            </Space>
-          }
-          style={{ marginBottom: 16 }}
-          size="small"
-        >
-          {alerts.map((alert) => (
-            <Alert
-              key={alert.alert_id}
-              type="warning"
-              style={{ marginBottom: 8 }}
-              message={
-                <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                  <span>
-                    <strong>{alert.item_code}</strong> {alert.item_name} — 현재수량:{' '}
-                    <strong>{alert.current_quantity}</strong> / 재주문점:{' '}
-                    <strong>{alert.reorder_point}</strong>
-                  </span>
-                  <Space>
-                    <Button size="small" onClick={() => handleAcknowledge(alert.alert_id)}>
-                      확인
-                    </Button>
-                    <Button
-                      size="small"
-                      type="primary"
-                      onClick={() => handleResolve(alert.alert_id)}
-                    >
-                      해결
-                    </Button>
-                  </Space>
-                </Space>
-              }
-              showIcon
+      {/* Summary Cards */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic title={t('inventory.totalItems')} value={stats.totalItems} />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title={t('inventory.totalQuantity')}
+              value={stats.totalQuantity.toLocaleString()}
+              valueStyle={{ color: '#2563eb' }}
             />
-          ))}
-        </Card>
-      )}
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title={t('inventory.lowStockItems')}
+              value={stats.lowStockCount}
+              valueStyle={{ color: stats.lowStockCount > 0 ? '#ef4444' : '#10b981' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <Card>
+            <Statistic
+              title={t('inventory.storageLocations')}
+              value={stats.locationCount}
+              valueStyle={{ color: '#8b5cf6' }}
+            />
+          </Card>
+        </Col>
+      </Row>
 
+      {/* Table */}
       <Card>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
           <Input
             prefix={<SearchOutlined />}
-            placeholder="품목명 또는 코드 검색"
+            placeholder={t('inventory.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 240 }}
+            style={{ width: 220 }}
             allowClear
           />
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: '#666', fontSize: 13 }}>
+              {t('common.total', { count: filteredItems.length })}
+            </span>
+            <Button icon={<UploadOutlined />} onClick={handleBulkImport}>
+              Excel {t('inventory.bulkImport')}
+            </Button>
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>
+              Excel {t('common.export')}
+            </Button>
+          </div>
         </div>
 
         <Table<InventoryWithItem>
@@ -204,14 +268,56 @@ const Inventory = () => {
           columns={columns}
           dataSource={filteredItems}
           loading={isLoading}
-          scroll={{ x: 950 }}
+          scroll={{ x: 1100 }}
+          rowClassName={(record) =>
+            record.current_quantity === 0 || record.current_quantity < record.min_stock
+              ? 'inventory-low-stock-row'
+              : ''
+          }
           pagination={{
             pageSize: 20,
-            showSizeChanger: false,
-            showTotal: (total) => `총 ${total}건`,
+            showSizeChanger: true,
+            pageSizeOptions: ['20', '50', '100'],
+            showTotal: (total) => t('common.total', { count: total }),
           }}
         />
       </Card>
+
+      {/* Edit Modal */}
+      <Modal
+        title={t('inventory.editQuantity')}
+        open={editModal}
+        onOk={handleEditSubmit}
+        onCancel={() => { setEditModal(false); setEditingItem(null); }}
+        okText={t('common.save')}
+        cancelText={t('common.cancel')}
+        destroyOnClose
+      >
+        {editingItem && (
+          <div style={{ marginBottom: 16 }}>
+            <strong>{editingItem.item_code}</strong> — {editingItem.item_name}
+          </div>
+        )}
+        <Form form={form} layout="vertical">
+          <Form.Item
+            name="current_quantity"
+            label={t('inventory.currentQuantity')}
+            rules={[{ required: true, message: t('inventory.quantityRequired') }]}
+          >
+            <InputNumber min={0} style={{ width: '100%' }} />
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Row highlight style */}
+      <style>{`
+        .inventory-low-stock-row {
+          background-color: #fff1f0 !important;
+        }
+        .inventory-low-stock-row:hover > td {
+          background-color: #ffe4e1 !important;
+        }
+      `}</style>
     </div>
   );
 };

@@ -2,11 +2,13 @@ import { useState } from 'react';
 import { Layout } from 'antd';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import { useLocationStore } from '@/store/location.store';
 
 const { Content, Sider } = Layout;
 
 const MainLayout = () => {
   const [collapsed, setCollapsed] = useState(false);
+  const currentLocationId = useLocationStore((s) => s.currentLocationId);
 
   return (
     <Layout style={{ minHeight: '100vh' }}>
@@ -27,7 +29,7 @@ const MainLayout = () => {
             background: '#fff',
           }}
         >
-          <Outlet />
+          <Outlet key={currentLocationId ?? 'default'} />
         </Content>
       </Layout>
     </Layout>

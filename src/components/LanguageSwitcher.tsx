@@ -1,26 +1,45 @@
-import { Select } from 'antd';
+import { Button, Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
-
-const LANGUAGE_OPTIONS = [
-  { value: 'ko', label: '한국어' },
-  { value: 'vi', label: 'Tiếng Việt' },
-];
 
 const LanguageSwitcher = () => {
   const { i18n } = useTranslation();
 
-  const handleChange = (lang: string) => {
-    i18n.changeLanguage(lang);
-  };
-
   return (
-    <Select
-      value={i18n.language}
-      onChange={handleChange}
-      options={LANGUAGE_OPTIONS}
-      size="small"
-      style={{ width: '100%' }}
-    />
+    <div>
+      <Typography.Text style={{ color: '#9ca3af', fontSize: 12, marginBottom: 6, display: 'block' }}>
+        언어 선택
+      </Typography.Text>
+      <div style={{ display: 'flex', gap: 8, width: '100%' }}>
+        <Button
+          type={i18n.language === 'ko' ? 'primary' : 'default'}
+          onClick={() => i18n.changeLanguage('ko')}
+          style={{
+            flex: 1,
+            fontSize: 20,
+            height: 36,
+            ...(i18n.language !== 'ko'
+              ? { background: '#374151', borderColor: '#4b5563' }
+              : {}),
+          }}
+        >
+          🇰🇷
+        </Button>
+        <Button
+          type={i18n.language === 'vi' ? 'primary' : 'default'}
+          onClick={() => i18n.changeLanguage('vi')}
+          style={{
+            flex: 1,
+            fontSize: 20,
+            height: 36,
+            ...(i18n.language !== 'vi'
+              ? { background: '#374151', borderColor: '#4b5563' }
+              : {}),
+          }}
+        >
+          🇻🇳
+        </Button>
+      </div>
+    </div>
   );
 };
 

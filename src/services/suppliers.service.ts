@@ -1,11 +1,14 @@
 import { supabase } from '@/lib/supabase';
 import type { Supplier } from '@/types/database.types';
+import { getOptionalLocationId } from '@/services/locationContext';
 
 export async function getAllSuppliers(): Promise<Supplier[]> {
-  const { data, error } = await supabase
-    .from('suppliers')
-    .select('*')
-    .order('supplier_code', { ascending: true });
+  const locationId = getOptionalLocationId();
+  let query = supabase.from('suppliers').select('*');
+  if (locationId) {
+    query = query.eq('location_id', locationId);
+  }
+  const { data, error } = await query.order('supplier_code', { ascending: true });
 
   if (error) {
     throw new Error(`공급업체 목록 조회 실패: ${error.message}`);

@@ -26,11 +26,6 @@ const STATUS_COLOR: Record<string, string> = {
   INACTIVE: 'red',
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  ACTIVE: '활성',
-  INACTIVE: '비활성',
-};
-
 interface SupplierFormValues {
   supplier_name: string;
   contact_person: string;
@@ -107,7 +102,7 @@ const Suppliers = () => {
     try {
       if (editingSupplier) {
         await updateSupplier(editingSupplier.supplier_id, values);
-        message.success('공급업체가 수정되었습니다.');
+        message.success(t('suppliers.updateSuccess'));
       } else {
         await createSupplier({
           supplier_code: '',
@@ -122,11 +117,11 @@ const Suppliers = () => {
           location_id: '',
           created_by: '',
         });
-        message.success('공급업체가 등록되었습니다.');
+        message.success(t('suppliers.createSuccess'));
       }
       handleModalCancel();
     } catch {
-      message.error('저장에 실패했습니다.');
+      message.error(t('common.error'));
     } finally {
       setSubmitting(false);
     }
@@ -135,41 +130,47 @@ const Suppliers = () => {
   const handleDelete = async (supplierId: string) => {
     try {
       await deleteSupplier(supplierId);
-      message.success('공급업체가 삭제되었습니다.');
+      message.success(t('suppliers.deleteSuccess'));
     } catch {
-      message.error('삭제에 실패했습니다.');
+      message.error(t('common.error'));
     }
+  };
+
+  const getStatusLabel = (status: string) => {
+    if (status === 'ACTIVE') return t('common.active');
+    if (status === 'INACTIVE') return t('common.inactive');
+    return status;
   };
 
   const columns: ColumnsType<Supplier> = [
     {
-      title: '공급업체코드',
+      title: t('suppliers.supplierCode'),
       dataIndex: 'supplier_code',
       key: 'supplier_code',
       width: 140,
       sorter: (a, b) => a.supplier_code.localeCompare(b.supplier_code),
     },
     {
-      title: '공급업체명',
+      title: t('suppliers.supplierName'),
       dataIndex: 'supplier_name',
       key: 'supplier_name',
       width: 180,
       sorter: (a, b) => a.supplier_name.localeCompare(b.supplier_name),
     },
     {
-      title: '담당자',
+      title: t('suppliers.contactPerson'),
       dataIndex: 'contact_person',
       key: 'contact_person',
       width: 120,
     },
     {
-      title: '이메일',
+      title: t('auth.email'),
       dataIndex: 'email',
       key: 'email',
       width: 180,
     },
     {
-      title: '전화번호',
+      title: t('suppliers.phone'),
       dataIndex: 'phone',
       key: 'phone',
       width: 140,
@@ -181,7 +182,7 @@ const Suppliers = () => {
       width: 90,
       render: (status: string) => (
         <Tag color={STATUS_COLOR[status] ?? 'default'}>
-          {STATUS_LABEL[status] ?? status}
+          {getStatusLabel(status)}
         </Tag>
       ),
     },
@@ -198,7 +199,7 @@ const Suppliers = () => {
             onClick={() => openEditModal(record)}
           />
           <Popconfirm
-            title="이 공급업체를 삭제하시겠습니까?"
+            title={t('suppliers.deleteConfirm')}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
             onConfirm={() => handleDelete(record.supplier_id)}
@@ -214,29 +215,29 @@ const Suppliers = () => {
     <div style={{ padding: '24px' }}>
       <Breadcrumb
         style={{ marginBottom: 16 }}
-        items={[{ title: t('common.appName') }, { title: '공급업체 관리' }]}
+        items={[{ title: t('common.appName') }, { title: t('suppliers.title') }]}
       />
-      <h2 style={{ marginBottom: 16 }}>공급업체 관리</h2>
+      <h2 style={{ marginBottom: 16 }}>{t('suppliers.title')}</h2>
 
       <Card>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
           <Input
             prefix={<SearchOutlined />}
-            placeholder="공급업체명 또는 코드 검색"
+            placeholder={t('suppliers.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             style={{ width: 220 }}
             allowClear
           />
           <Select
-            placeholder="상태 선택"
+            placeholder={t('common.status')}
             allowClear
             style={{ width: 140 }}
             value={statusFilter}
             onChange={(val) => setStatusFilter(val)}
           >
-            <Option value="ACTIVE">활성</Option>
-            <Option value="INACTIVE">비활성</Option>
+            <Option value="ACTIVE">{t('common.active')}</Option>
+            <Option value="INACTIVE">{t('common.inactive')}</Option>
           </Select>
           <div style={{ marginLeft: 'auto' }}>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
@@ -251,12 +252,12 @@ const Suppliers = () => {
           dataSource={filteredSuppliers}
           loading={isLoading}
           scroll={{ x: 1000 }}
-          pagination={{ pageSize: 20, showSizeChanger: false, showTotal: (total) => `총 ${total}건` }}
+          pagination={{ pageSize: 20, showSizeChanger: false, showTotal: (total) => t('common.total', { count: total }) }}
         />
       </Card>
 
       <Modal
-        title={editingSupplier ? '공급업체 수정' : '공급업체 등록'}
+        title={editingSupplier ? t('suppliers.editSupplier') : t('suppliers.createSupplier')}
         open={modalOpen}
         onOk={handleSubmit}
         onCancel={handleModalCancel}
@@ -269,33 +270,33 @@ const Suppliers = () => {
         <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
           <Form.Item
             name="supplier_name"
-            label="공급업체명"
-            rules={[{ required: true, message: '공급업체명을 입력하세요' }]}
+            label={t('suppliers.supplierName')}
+            rules={[{ required: true, message: t('suppliers.supplierNameRequired') }]}
           >
             <Input />
           </Form.Item>
-          <Form.Item name="contact_person" label="담당자">
+          <Form.Item name="contact_person" label={t('suppliers.contactPerson')}>
             <Input />
           </Form.Item>
-          <Form.Item name="email" label="이메일">
+          <Form.Item name="email" label={t('auth.email')}>
             <Input />
           </Form.Item>
-          <Form.Item name="phone" label="전화번호">
+          <Form.Item name="phone" label={t('suppliers.phone')}>
             <Input />
           </Form.Item>
-          <Form.Item name="address" label="주소">
+          <Form.Item name="address" label={t('suppliers.address')}>
             <Input />
           </Form.Item>
-          <Form.Item name="country" label="국가">
+          <Form.Item name="country" label={t('suppliers.country')}>
             <Input />
           </Form.Item>
-          <Form.Item name="website" label="웹사이트">
+          <Form.Item name="website" label={t('suppliers.website')}>
             <Input />
           </Form.Item>
           <Form.Item name="status" label={t('common.status')}>
             <Select>
-              <Option value="ACTIVE">활성</Option>
-              <Option value="INACTIVE">비활성</Option>
+              <Option value="ACTIVE">{t('common.active')}</Option>
+              <Option value="INACTIVE">{t('common.inactive')}</Option>
             </Select>
           </Form.Item>
         </Form>
