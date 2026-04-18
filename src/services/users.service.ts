@@ -1,3 +1,4 @@
+import axios from 'axios';
 import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
 import type { User } from '@/types/database.types';
@@ -41,21 +42,36 @@ export type CreateUserData = Omit<
   User,
   'user_id' | 'created_at' | 'updated_at' | 'password_hash'
 > & {
-  password_hash: string;
+  password: string;
 };
 
 export async function createUser(data: CreateUserData): Promise<SafeUser> {
-  const { data: created, error } = await supabase
-    .from('users')
-    .insert(data)
-    .select(USER_COLUMNS)
-    .single();
-
-  if (error) {
-    throw new Error(i18n.t('errors.users.createFailed', { message: error.message }));
+  try {
+    const response = await axios.post<{ user: SafeUser }>('/api/users', data);
+    return response.data.user;
+  } catch (err) {
+    const serverError =
+      axios.isAxiosError(err) && err.response?.data?.error
+        ? (err.response.data.error as string)
+        : err instanceof Error
+          ? err.message
+          : 'Unknown error';
+    throw new Error(i18n.t('errors.users.createFailed', { message: serverError }));
   }
+}
 
-  return created as SafeUser;
+export async function resetUserPassword(id: string, password: string): Promise<void> {
+  try {
+    await axios.post(`/api/users/${id}/password`, { password });
+  } catch (err) {
+    const serverError =
+      axios.isAxiosError(err) && err.response?.data?.error
+        ? (err.response.data.error as string)
+        : err instanceof Error
+          ? err.message
+          : 'Unknown error';
+    throw new Error(i18n.t('errors.users.updateFailed', { message: serverError }));
+  }
 }
 
 export type UpdateUserData = Partial<

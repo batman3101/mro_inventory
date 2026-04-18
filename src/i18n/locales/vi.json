@@ -276,6 +276,11 @@
     "emailRequired": "Vui lòng nhập email",
     "emailInvalid": "Vui lòng nhập email hợp lệ",
     "roleRequired": "Vui lòng chọn vai trò",
+    "passwordRequired": "Vui lòng nhập mật khẩu",
+    "passwordMinLength": "Mật khẩu phải có ít nhất 6 ký tự",
+    "passwordConfirm": "Xác nhận mật khẩu",
+    "passwordConfirmRequired": "Vui lòng nhập xác nhận mật khẩu",
+    "passwordMismatch": "Mật khẩu không khớp",
     "roles": {
       "system_admin": "Quản trị hệ thống",
       "admin": "Quản trị viên",

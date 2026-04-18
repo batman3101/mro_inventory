@@ -37,6 +37,8 @@ interface UserFormValues {
   username: string;
   full_name: string;
   email: string;
+  password?: string;
+  password_confirm?: string;
   role: string;
   department_id?: string;
   location_id?: string;
@@ -121,6 +123,7 @@ const Users = () => {
           username: values.username,
           full_name: values.full_name,
           email: values.email,
+          password: values.password ?? '',
           role: values.role,
           department_id: values.department_id ?? null,
           location_id: values.location_id ?? null,
@@ -276,7 +279,7 @@ const Users = () => {
           okText={t('common.save')}
           cancelText={t('common.cancel')}
           confirmLoading={submitting}
-          destroyOnClose
+          forceRender
         >
           <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
             <Form.Item
@@ -303,6 +306,40 @@ const Users = () => {
             >
               <Input />
             </Form.Item>
+            {!editingUser && (
+              <>
+                <Form.Item
+                  name="password"
+                  label={t('auth.password')}
+                  rules={[
+                    { required: true, message: t('users.passwordRequired') },
+                    { min: 6, message: t('users.passwordMinLength') },
+                  ]}
+                  hasFeedback
+                >
+                  <Input.Password autoComplete="new-password" />
+                </Form.Item>
+                <Form.Item
+                  name="password_confirm"
+                  label={t('users.passwordConfirm')}
+                  dependencies={['password']}
+                  hasFeedback
+                  rules={[
+                    { required: true, message: t('users.passwordConfirmRequired') },
+                    ({ getFieldValue }) => ({
+                      validator(_, value) {
+                        if (!value || getFieldValue('password') === value) {
+                          return Promise.resolve();
+                        }
+                        return Promise.reject(new Error(t('users.passwordMismatch')));
+                      },
+                    }),
+                  ]}
+                >
+                  <Input.Password autoComplete="new-password" />
+                </Form.Item>
+              </>
+            )}
             <Form.Item
               name="role"
               label={t('users.role')}

@@ -9,7 +9,9 @@ type SafeUser = Omit<User, 'password_hash'>;
 type CreateUserFormData = Omit<
   User,
   'user_id' | 'created_at' | 'updated_at' | 'password_hash'
->;
+> & {
+  password: string;
+};
 
 interface UsersState {
   users: SafeUser[];
@@ -39,11 +41,7 @@ export const useUsersStore = create<UsersState>((set) => ({
   },
 
   createUser: async (data) => {
-    // password_hash placeholder — real hashing must occur server-side via bcrypt
-    const created = await usersService.createUser({
-      ...data,
-      password_hash: 'PLACEHOLDER_MUST_BE_HASHED_SERVER_SIDE',
-    });
+    const created = await usersService.createUser(data);
     set((state) => ({ users: [...state.users, created] }));
   },
 
