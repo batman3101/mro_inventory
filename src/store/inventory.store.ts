@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n/config';
 import type { ReorderAlert } from '@/types/database.types';
 import type { InventoryWithItem, ReorderAlertWithItem } from '@/services/inventory.service';
 import * as inventoryService from '@/services/inventory.service';
@@ -27,7 +28,7 @@ export const useInventoryStore = create<InventoryState>((set) => ({
       const inventoryItems = await inventoryService.getAllInventory();
       set({ inventoryItems, isLoading: false });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '재고 목록 조회 실패';
+      const message = error instanceof Error ? error.message : i18n.t('errors.inventory.listFallback');
       set({ error: message, isLoading: false });
     }
   },
@@ -38,7 +39,7 @@ export const useInventoryStore = create<InventoryState>((set) => ({
       const alerts = await inventoryService.getReorderAlerts();
       set({ alerts, isLoading: false });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '재주문 알림 조회 실패';
+      const message = error instanceof Error ? error.message : i18n.t('errors.inventory.alertsFallback');
       set({ error: message, isLoading: false });
     }
   },

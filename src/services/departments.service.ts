@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import i18n from '@/i18n/config';
 import type { Department } from '@/types/database.types';
 
 export async function getAllDepartments(): Promise<Department[]> {
@@ -8,7 +9,7 @@ export async function getAllDepartments(): Promise<Department[]> {
     .order('department_code', { ascending: true });
 
   if (error) {
-    throw new Error(`부서 목록 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.departments.fetchFailed', { message: error.message }));
   }
 
   return data ?? [];
@@ -25,7 +26,7 @@ export async function getDepartmentById(departmentId: string): Promise<Departmen
     if (error.code === 'PGRST116') {
       return null;
     }
-    throw new Error(`부서 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.departments.getByIdFailed', { message: error.message }));
   }
 
   return data;
@@ -41,7 +42,7 @@ export async function createDepartment(
     .single();
 
   if (error) {
-    throw new Error(`부서 생성 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.departments.createFailed', { message: error.message }));
   }
 
   return created;
@@ -59,7 +60,7 @@ export async function updateDepartment(
     .single();
 
   if (error) {
-    throw new Error(`부서 수정 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.departments.updateFailed', { message: error.message }));
   }
 
   return updated;
@@ -72,6 +73,6 @@ export async function deleteDepartment(departmentId: string): Promise<void> {
     .eq('department_id', departmentId);
 
   if (error) {
-    throw new Error(`부서 삭제 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.departments.deleteFailed', { message: error.message }));
   }
 }

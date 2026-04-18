@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-  Table,
   Button,
   Modal,
   Form,
@@ -11,6 +10,7 @@ import {
   Card,
   Breadcrumb,
 } from 'antd';
+import { ResizableTable } from '@/components/ResizableTable';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
@@ -180,7 +180,7 @@ const Departments = () => {
           </Button>
         </div>
 
-        <Table<Department>
+        <ResizableTable<Department>
           rowKey="department_id"
           columns={columns}
           dataSource={departments}

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import i18n from '@/i18n/config';
 import type { Inbound } from '@/types/database.types';
 import { getOptionalLocationId } from '@/services/locationContext';
 
@@ -15,7 +16,7 @@ export async function getAllInbound(): Promise<Inbound[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error(`입고 목록 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.inbound.fetchFailed', { message: error.message }));
   }
 
   return (data ?? []).map((row: any) => ({
@@ -38,7 +39,7 @@ export async function getInboundById(id: string): Promise<Inbound | null> {
     if (error.code === 'PGRST116') {
       return null;
     }
-    throw new Error(`입고 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.inbound.getByIdFailed', { message: error.message }));
   }
 
   return {
@@ -66,7 +67,7 @@ export async function generateReferenceNumber(): Promise<string> {
     .limit(1);
 
   if (error) {
-    throw new Error(`입고번호 생성 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.inbound.generateRefFailed', { message: error.message }));
   }
 
   if (!data || data.length === 0) {
@@ -93,10 +94,9 @@ export async function createInbound(
     .single();
 
   if (error) {
-    throw new Error(`입고 등록 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.inbound.createFailed', { message: error.message }));
   }
 
-  // Update inventory: upsert current_quantity
   const { data: existing, error: invFetchError } = await supabase
     .from('inventory')
     .select('inventory_id, current_quantity')
@@ -105,7 +105,7 @@ export async function createInbound(
     .maybeSingle();
 
   if (invFetchError) {
-    throw new Error(`재고 조회 실패: ${invFetchError.message}`);
+    throw new Error(i18n.t('errors.inbound.inventoryFetchFailed', { message: invFetchError.message }));
   }
 
   if (existing) {
@@ -119,7 +119,7 @@ export async function createInbound(
       .eq('inventory_id', existing.inventory_id);
 
     if (updateError) {
-      throw new Error(`재고 수량 업데이트 실패: ${updateError.message}`);
+      throw new Error(i18n.t('errors.inbound.inventoryUpdateFailed', { message: updateError.message }));
     }
   } else {
     const { error: insertError } = await supabase
@@ -134,7 +134,7 @@ export async function createInbound(
       });
 
     if (insertError) {
-      throw new Error(`재고 생성 실패: ${insertError.message}`);
+      throw new Error(i18n.t('errors.inbound.inventoryCreateFailed', { message: insertError.message }));
     }
   }
 
@@ -153,7 +153,7 @@ export async function updateInbound(
     .eq('inbound_id', id);
 
   if (error) {
-    throw new Error(`입고 수정 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.inbound.updateFailed', { message: error.message }));
   }
 
   return getInboundById(id) as Promise<Inbound>;
@@ -166,6 +166,6 @@ export async function deleteInbound(id: string): Promise<void> {
     .eq('inbound_id', id);
 
   if (error) {
-    throw new Error(`입고 삭제 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.inbound.deleteFailed', { message: error.message }));
   }
 }

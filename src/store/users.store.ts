@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n/config';
 import type { User } from '@/types/database.types';
 import * as usersService from '@/services/users.service';
 import type { UpdateUserData } from '@/services/users.service';
@@ -32,7 +33,7 @@ export const useUsersStore = create<UsersState>((set) => ({
       const users = await usersService.getAllUsers();
       set({ users, isLoading: false });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '사용자 목록 조회 실패';
+      const message = error instanceof Error ? error.message : i18n.t('errors.users.listFallback');
       set({ error: message, isLoading: false });
     }
   },

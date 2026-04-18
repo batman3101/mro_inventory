@@ -11,6 +11,7 @@
     "build:server": "cd server && npm install",
     "start": "cd server && npm start",
     "lint": "eslint .",
+    "lint:i18n": "node scripts/validate-i18n.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

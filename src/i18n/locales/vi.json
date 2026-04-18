@@ -22,7 +22,9 @@
     "error": "Lỗi",
     "warning": "Cảnh báo",
     "unassigned": "Chưa phân công",
-    "selectLocation": "Chọn vị trí"
+    "selectLocation": "Chọn vị trí",
+    "createdAt": "Ngày tạo",
+    "updatedAt": "Ngày cập nhật"
   },
   "menu": {
     "dashboard": "Bảng điều khiển",
@@ -41,7 +43,9 @@
     "email": "Email",
     "password": "Mật khẩu",
     "loginButton": "Đăng nhập",
-    "loginError": "Email hoặc mật khẩu không đúng."
+    "loginError": "Email hoặc mật khẩu không đúng.",
+    "devAdminFullName": "Quản trị viên",
+    "devAdminPosition": "Quản trị hệ thống"
   },
   "dashboard": {
     "title": "Bảng điều khiển",
@@ -277,6 +281,122 @@
       "admin": "Quản trị viên",
       "user": "Người dùng",
       "viewer": "Người xem"
+    }
+  },
+  "components": {
+    "loginSubtitle": "Hệ thống quản lý vật tư MRO",
+    "languageSelect": "Chọn ngôn ngữ",
+    "factorySelect": "Chọn nhà máy"
+  },
+  "errors": {
+    "auth": {
+      "loginFailed": "Đã xảy ra lỗi khi đăng nhập."
+    },
+    "location": {
+      "notSelected": "Chưa chọn vị trí."
+    },
+    "items": {
+      "fetchFailed": "Tải danh sách vật tư thất bại: {{message}}",
+      "getByIdFailed": "Tải vật tư thất bại: {{message}}",
+      "generateCodeFailed": "Tạo mã vật tư thất bại: {{message}}",
+      "createFailed": "Tạo vật tư thất bại: {{message}}",
+      "updateFailed": "Cập nhật vật tư thất bại: {{message}}",
+      "deleteFailed": "Xóa vật tư thất bại: {{message}}",
+      "searchFailed": "Tìm kiếm vật tư thất bại: {{message}}",
+      "fetchByCategoryFailed": "Tải vật tư theo danh mục thất bại: {{message}}",
+      "listFallback": "Tải danh sách vật tư thất bại"
+    },
+    "inbound": {
+      "fetchFailed": "Tải danh sách nhập kho thất bại: {{message}}",
+      "getByIdFailed": "Tải phiếu nhập thất bại: {{message}}",
+      "generateRefFailed": "Tạo số phiếu nhập thất bại: {{message}}",
+      "createFailed": "Tạo phiếu nhập thất bại: {{message}}",
+      "updateFailed": "Cập nhật phiếu nhập thất bại: {{message}}",
+      "deleteFailed": "Xóa phiếu nhập thất bại: {{message}}",
+      "inventoryFetchFailed": "Tải tồn kho thất bại: {{message}}",
+      "inventoryUpdateFailed": "Cập nhật số lượng tồn kho thất bại: {{message}}",
+      "inventoryCreateFailed": "Tạo tồn kho thất bại: {{message}}",
+      "listFallback": "Tải danh sách nhập kho thất bại"
+    },
+    "outbound": {
+      "fetchFailed": "Tải danh sách xuất kho thất bại: {{message}}",
+      "getByIdFailed": "Tải phiếu xuất thất bại: {{message}}",
+      "generateRefFailed": "Tạo số phiếu xuất thất bại: {{message}}",
+      "stockCheckFailed": "Tải tồn kho thất bại: {{message}}",
+      "stockInsufficient": "Tồn kho không đủ. Tồn kho hiện tại: {{current}}, Yêu cầu: {{requested}}",
+      "createFailed": "Tạo phiếu xuất thất bại: {{message}}",
+      "stockDeductFailed": "Trừ tồn kho thất bại: {{message}}",
+      "deleteFailed": "Xóa phiếu xuất thất bại: {{message}}",
+      "listFallback": "Tải danh sách xuất kho thất bại"
+    },
+    "suppliers": {
+      "fetchFailed": "Tải danh sách nhà cung cấp thất bại: {{message}}",
+      "getByIdFailed": "Tải nhà cung cấp thất bại: {{message}}",
+      "createFailed": "Tạo nhà cung cấp thất bại: {{message}}",
+      "updateFailed": "Cập nhật nhà cung cấp thất bại: {{message}}",
+      "deleteFailed": "Xóa nhà cung cấp thất bại: {{message}}",
+      "listFallback": "Tải danh sách nhà cung cấp thất bại"
+    },
+    "departments": {
+      "fetchFailed": "Tải danh sách phòng ban thất bại: {{message}}",
+      "getByIdFailed": "Tải phòng ban thất bại: {{message}}",
+      "createFailed": "Tạo phòng ban thất bại: {{message}}",
+      "updateFailed": "Cập nhật phòng ban thất bại: {{message}}",
+      "deleteFailed": "Xóa phòng ban thất bại: {{message}}",
+      "listFallback": "Tải danh sách phòng ban thất bại"
+    },
+    "users": {
+      "fetchFailed": "Tải danh sách người dùng thất bại: {{message}}",
+      "getByIdFailed": "Tải người dùng thất bại: {{message}}",
+      "createFailed": "Tạo người dùng thất bại: {{message}}",
+      "updateFailed": "Cập nhật người dùng thất bại: {{message}}",
+      "deactivateFailed": "Vô hiệu hóa người dùng thất bại: {{message}}",
+      "activateFailed": "Kích hoạt người dùng thất bại: {{message}}",
+      "listFallback": "Tải danh sách người dùng thất bại"
+    },
+    "inventory": {
+      "fetchFailed": "Tải danh sách tồn kho thất bại: {{message}}",
+      "getByIdFailed": "Tải tồn kho thất bại: {{message}}",
+      "updateQuantityFailed": "Cập nhật số lượng tồn kho thất bại: {{message}}",
+      "alertsFetchFailed": "Tải cảnh báo đặt hàng lại thất bại: {{message}}",
+      "acknowledgeAlertFailed": "Xác nhận cảnh báo thất bại: {{message}}",
+      "resolveAlertFailed": "Giải quyết cảnh báo thất bại: {{message}}",
+      "listFallback": "Tải danh sách tồn kho thất bại",
+      "alertsFallback": "Tải cảnh báo đặt hàng lại thất bại"
+    },
+    "itemPrice": {
+      "fetchFailed": "Tải danh sách đơn giá thất bại: {{message}}",
+      "currentFetchFailed": "Tải đơn giá hiện hành thất bại: {{message}}",
+      "deactivateCurrentFailed": "Vô hiệu hóa đơn giá cũ thất bại: {{message}}",
+      "createFailed": "Tạo đơn giá thất bại: {{message}}",
+      "updateFailed": "Cập nhật đơn giá thất bại: {{message}}",
+      "deleteFailed": "Xóa đơn giá thất bại: {{message}}",
+      "listFallback": "Tải danh sách đơn giá thất bại"
+    }
+  },
+  "excel": {
+    "templates": {
+      "itemImport": {
+        "sheetName": "NhapVatTu",
+        "fileName": "MRO_Mau_Nhap_Vat_Tu.xlsx",
+        "columns": {
+          "itemName": "Tên vật tư",
+          "koreanName": "Tên tiếng Hàn",
+          "vietnameseName": "Tên tiếng Việt",
+          "categoryCode": "Mã danh mục",
+          "spec": "Quy cách",
+          "unit": "Đơn vị",
+          "minStock": "Tồn kho tối thiểu",
+          "maxStock": "Tồn kho tối đa",
+          "reorderPoint": "Điểm đặt hàng lại",
+          "storageLocation": "Vị trí lưu kho",
+          "description": "Mô tả"
+        }
+      }
+    },
+    "validation": {
+      "required": "Trường bắt buộc",
+      "mustBeNumber": "Phải là số"
     }
   }
 }

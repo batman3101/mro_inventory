@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Table, Button, Select, Modal, Form, Space, Popconfirm, message,
+  Button, Select, Modal, Form, Space, Popconfirm, message,
   Card, Col, Row, Statistic, Input, InputNumber, DatePicker,
 } from 'antd';
+import { ResizableTable } from '@/components/ResizableTable';
 import { PlusOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
@@ -215,7 +216,7 @@ const InboundPage = () => {
             <Button icon={<FileExcelOutlined />}>{t('inbound.exportExcel')}</Button>
           </div>
         </div>
-        <Table<Inbound>
+        <ResizableTable<Inbound>
           rowKey="inbound_id" columns={columns} dataSource={filteredRecords} loading={isLoading}
           scroll={{ x: 1200 }}
           pagination={{ pageSize: 20, showSizeChanger: false, showTotal: (total) => t('common.total', { count: total }) }}

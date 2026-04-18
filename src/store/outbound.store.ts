@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n/config';
 import type { Outbound } from '@/types/database.types';
 import * as outboundService from '@/services/outbound.service';
 
@@ -24,7 +25,7 @@ export const useOutboundStore = create<OutboundState>((set) => ({
       const outboundRecords = await outboundService.getAllOutbound();
       set({ outboundRecords, isLoading: false });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '출고 목록 조회 실패';
+      const message = error instanceof Error ? error.message : i18n.t('errors.outbound.listFallback');
       set({ error: message, isLoading: false });
     }
   },

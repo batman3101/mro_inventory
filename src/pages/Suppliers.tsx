@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-  Table,
   Button,
   Input,
   Select,
@@ -13,6 +12,7 @@ import {
   Card,
   Breadcrumb,
 } from 'antd';
+import { ResizableTable } from '@/components/ResizableTable';
 import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
@@ -246,7 +246,7 @@ const Suppliers = () => {
           </div>
         </div>
 
-        <Table<Supplier>
+        <ResizableTable<Supplier>
           rowKey="supplier_id"
           columns={columns}
           dataSource={filteredSuppliers}

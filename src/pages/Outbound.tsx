@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Table, Button, Input, Select, Modal, Form, Space, Popconfirm,
+  Button, Input, Select, Modal, Form, Space, Popconfirm,
   message, Card, Row, Col, Statistic, InputNumber, DatePicker, Alert,
 } from 'antd';
+import { ResizableTable } from '@/components/ResizableTable';
 import { PlusOutlined, SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
@@ -259,7 +260,7 @@ const OutboundPage = () => {
           </div>
         </div>
 
-        <Table<Outbound> rowKey="outbound_id" columns={columns} dataSource={filteredRecords}
+        <ResizableTable<Outbound> rowKey="outbound_id" columns={columns} dataSource={filteredRecords}
           loading={isLoading} scroll={{ x: 1200 }}
           pagination={{ pageSize: 20, showSizeChanger: false, showTotal: (n) => t('common.total', { count: n }) }} />
       </Card>

@@ -1,6 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Table,
   Input,
   Card,
   Tag,
@@ -13,6 +12,7 @@ import {
   InputNumber,
   message,
 } from 'antd';
+import { ResizableTable } from '@/components/ResizableTable';
 import {
   SearchOutlined,
   UploadOutlined,
@@ -263,7 +263,7 @@ const Inventory = () => {
           </div>
         </div>
 
-        <Table<InventoryWithItem>
+        <ResizableTable<InventoryWithItem>
           rowKey="inventory_id"
           columns={columns}
           dataSource={filteredItems}

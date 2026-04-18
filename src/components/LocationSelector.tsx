@@ -1,4 +1,5 @@
 import { Button, Space, Typography } from 'antd';
+import { useTranslation } from 'react-i18next';
 import { useLocationStore } from '@/store/location.store';
 
 const DEFAULT_LOCATIONS = [
@@ -7,6 +8,7 @@ const DEFAULT_LOCATIONS = [
 ];
 
 const LocationSelector = () => {
+  const { t } = useTranslation();
   const { currentLocationCode, locations, setCurrentLocation } = useLocationStore();
 
   const displayLocations = locations.length > 0 ? locations : DEFAULT_LOCATIONS;
@@ -14,7 +16,7 @@ const LocationSelector = () => {
   return (
     <div>
       <Typography.Text style={{ color: '#9ca3af', fontSize: 12, marginBottom: 6, display: 'block' }}>
-        공장 선택
+        {t('components.factorySelect')}
       </Typography.Text>
       <div style={{ display: 'flex', gap: 8, width: '100%' }}>
         {displayLocations.map((loc) => (

@@ -1,9 +1,10 @@
+import i18n from '@/i18n/config';
 import { useLocationStore } from '@/store/location.store';
 
 export function getLocationId(): string {
   const { currentLocationId } = useLocationStore.getState();
   if (!currentLocationId) {
-    throw new Error('위치가 선택되지 않았습니다.');
+    throw new Error(i18n.t('errors.location.notSelected'));
   }
   return currentLocationId;
 }
@@ -11,7 +12,7 @@ export function getLocationId(): string {
 export function getLocationCode(): string {
   const { currentLocationCode } = useLocationStore.getState();
   if (!currentLocationCode) {
-    throw new Error('위치가 선택되지 않았습니다.');
+    throw new Error(i18n.t('errors.location.notSelected'));
   }
   return currentLocationCode;
 }

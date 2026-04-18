@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import {
-  Table, Button, Input, Select, Modal, Form, Tag, Space,
+  Button, Input, Select, Modal, Form, Tag, Space,
   Popconfirm, message, Card, Row, Col, Descriptions,
 } from 'antd';
+import { ResizableTable } from '@/components/ResizableTable';
 import {
   PlusOutlined, SearchOutlined, DownloadOutlined,
   EditOutlined, DeleteOutlined, EyeOutlined,
@@ -278,7 +279,7 @@ const Items = () => {
           <Input prefix={<SearchOutlined />} placeholder={t('items.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: 280 }} allowClear />
           <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel {t('common.export')}</Button>
         </div>
-        <Table<Item> rowKey="item_id" columns={columns} dataSource={filteredItems} loading={loading} scroll={{ x: 1200 }}
+        <ResizableTable<Item> rowKey="item_id" columns={columns} dataSource={filteredItems} loading={loading} scroll={{ x: 1200 }}
           pagination={{ pageSize: 20, showSizeChanger: false, showTotal: (total) => t('common.total', { count: total }) }} />
       </Card>
 
@@ -345,8 +346,8 @@ const Items = () => {
             <Descriptions.Item label={t('items.storageLocation')}>{detailItem.storage_location}</Descriptions.Item>
             <Descriptions.Item label={t('common.status')}>{statusTag(detailItem.status, t)}</Descriptions.Item>
             <Descriptions.Item label={t('items.description')} span={2}>{detailItem.description}</Descriptions.Item>
-            <Descriptions.Item label="Created At">{detailItem.created_at}</Descriptions.Item>
-            <Descriptions.Item label="Updated At">{detailItem.updated_at}</Descriptions.Item>
+            <Descriptions.Item label={t('common.createdAt')}>{detailItem.created_at}</Descriptions.Item>
+            <Descriptions.Item label={t('common.updatedAt')}>{detailItem.updated_at}</Descriptions.Item>
           </Descriptions>
         )}
       </Modal>

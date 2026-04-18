@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import i18n from '@/i18n/config';
 import type { ItemPrice } from '@/types/database.types';
 
 export async function getItemPrices(itemId: string): Promise<ItemPrice[]> {
@@ -9,7 +10,7 @@ export async function getItemPrices(itemId: string): Promise<ItemPrice[]> {
     .order('effective_from', { ascending: false });
 
   if (error) {
-    throw new Error(`품목 단가 목록 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.itemPrice.fetchFailed', { message: error.message }));
   }
 
   return data ?? [];
@@ -27,7 +28,7 @@ export async function getCurrentPrice(itemId: string): Promise<ItemPrice | null>
     if (error.code === 'PGRST116') {
       return null;
     }
-    throw new Error(`현재 단가 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.itemPrice.currentFetchFailed', { message: error.message }));
   }
 
   return data;
@@ -43,7 +44,7 @@ export async function createItemPrice(
       .eq('item_id', data.item_id);
 
     if (updateError) {
-      throw new Error(`기존 단가 비활성화 실패: ${updateError.message}`);
+      throw new Error(i18n.t('errors.itemPrice.deactivateCurrentFailed', { message: updateError.message }));
     }
   }
 
@@ -54,7 +55,7 @@ export async function createItemPrice(
     .single();
 
   if (error) {
-    throw new Error(`품목 단가 생성 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.itemPrice.createFailed', { message: error.message }));
   }
 
   return created;
@@ -72,7 +73,7 @@ export async function updateItemPrice(
     .single();
 
   if (error) {
-    throw new Error(`품목 단가 수정 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.itemPrice.updateFailed', { message: error.message }));
   }
 
   return updated;
@@ -85,6 +86,6 @@ export async function deleteItemPrice(priceId: string): Promise<void> {
     .eq('price_id', priceId);
 
   if (error) {
-    throw new Error(`품목 단가 삭제 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.itemPrice.deleteFailed', { message: error.message }));
   }
 }

@@ -2,12 +2,12 @@ import { Button, Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 
 const LanguageSwitcher = () => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   return (
     <div>
       <Typography.Text style={{ color: '#9ca3af', fontSize: 12, marginBottom: 6, display: 'block' }}>
-        언어 선택
+        {t('components.languageSelect')}
       </Typography.Text>
       <div style={{ display: 'flex', gap: 8, width: '100%' }}>
         <Button

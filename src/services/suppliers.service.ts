@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import i18n from '@/i18n/config';
 import type { Supplier } from '@/types/database.types';
 import { getOptionalLocationId } from '@/services/locationContext';
 
@@ -11,7 +12,7 @@ export async function getAllSuppliers(): Promise<Supplier[]> {
   const { data, error } = await query.order('supplier_code', { ascending: true });
 
   if (error) {
-    throw new Error(`공급업체 목록 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.suppliers.fetchFailed', { message: error.message }));
   }
 
   return data ?? [];
@@ -28,7 +29,7 @@ export async function getSupplierById(supplierId: string): Promise<Supplier | nu
     if (error.code === 'PGRST116') {
       return null;
     }
-    throw new Error(`공급업체 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.suppliers.getByIdFailed', { message: error.message }));
   }
 
   return data;
@@ -44,7 +45,7 @@ export async function createSupplier(
     .single();
 
   if (error) {
-    throw new Error(`공급업체 생성 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.suppliers.createFailed', { message: error.message }));
   }
 
   return created;
@@ -62,7 +63,7 @@ export async function updateSupplier(
     .single();
 
   if (error) {
-    throw new Error(`공급업체 수정 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.suppliers.updateFailed', { message: error.message }));
   }
 
   return updated;
@@ -75,6 +76,6 @@ export async function deleteSupplier(supplierId: string): Promise<void> {
     .eq('supplier_id', supplierId);
 
   if (error) {
-    throw new Error(`공급업체 삭제 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.suppliers.deleteFailed', { message: error.message }));
   }
 }

@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import {
-  Table,
   Button,
   Modal,
   Form,
@@ -13,6 +12,7 @@ import {
   Card,
   Breadcrumb,
 } from 'antd';
+import { ResizableTable } from '@/components/ResizableTable';
 import { PlusOutlined, EditOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
@@ -253,7 +253,7 @@ const Users = () => {
           </div>
         )}
 
-        <Table<SafeUser>
+        <ResizableTable<SafeUser>
           rowKey="user_id"
           columns={columns}
           dataSource={users}

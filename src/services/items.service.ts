@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import i18n from '@/i18n/config';
 import type { Item } from '@/types/database.types';
 
 export async function getAllItems(): Promise<Item[]> {
@@ -8,7 +9,7 @@ export async function getAllItems(): Promise<Item[]> {
     .order('item_code', { ascending: true });
 
   if (error) {
-    throw new Error(`품목 목록 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.items.fetchFailed', { message: error.message }));
   }
 
   return data ?? [];
@@ -25,7 +26,7 @@ export async function getItemById(itemId: string): Promise<Item | null> {
     if (error.code === 'PGRST116') {
       return null;
     }
-    throw new Error(`품목 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.items.getByIdFailed', { message: error.message }));
   }
 
   return data;
@@ -45,7 +46,7 @@ export async function generateItemCode(): Promise<string> {
     .limit(1);
 
   if (error) {
-    throw new Error(`품목 코드 생성 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.items.generateCodeFailed', { message: error.message }));
   }
 
   if (!data || data.length === 0) {
@@ -71,7 +72,7 @@ export async function createItem(
     .single();
 
   if (error) {
-    throw new Error(`품목 생성 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.items.createFailed', { message: error.message }));
   }
 
   return created;
@@ -89,7 +90,7 @@ export async function updateItem(
     .single();
 
   if (error) {
-    throw new Error(`품목 수정 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.items.updateFailed', { message: error.message }));
   }
 
   return updated;
@@ -102,7 +103,7 @@ export async function deleteItem(itemId: string): Promise<void> {
     .eq('item_id', itemId);
 
   if (error) {
-    throw new Error(`품목 삭제 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.items.deleteFailed', { message: error.message }));
   }
 }
 
@@ -114,7 +115,7 @@ export async function searchItems(query: string): Promise<Item[]> {
     .order('item_code', { ascending: true });
 
   if (error) {
-    throw new Error(`품목 검색 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.items.searchFailed', { message: error.message }));
   }
 
   return data ?? [];
@@ -128,7 +129,7 @@ export async function getItemsByCategory(categoryId: string): Promise<Item[]> {
     .order('item_code', { ascending: true });
 
   if (error) {
-    throw new Error(`카테고리별 품목 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.items.fetchByCategoryFailed', { message: error.message }));
   }
 
   return data ?? [];

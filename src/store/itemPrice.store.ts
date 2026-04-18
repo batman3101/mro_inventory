@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n/config';
 import type { ItemPrice } from '@/types/database.types';
 import * as itemPriceService from '@/services/itemPrice.service';
 
@@ -23,7 +24,7 @@ export const useItemPriceStore = create<ItemPriceState>((set) => ({
       const prices = await itemPriceService.getItemPrices(itemId);
       set({ prices, isLoading: false });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '품목 단가 목록 조회 실패';
+      const message = error instanceof Error ? error.message : i18n.t('errors.itemPrice.listFallback');
       set({ error: message, isLoading: false });
     }
   },

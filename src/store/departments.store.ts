@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n/config';
 import type { Department } from '@/types/database.types';
 import * as departmentsService from '@/services/departments.service';
 
@@ -28,7 +29,7 @@ export const useDepartmentStore = create<DepartmentsState>((set) => ({
       const departments = await departmentsService.getAllDepartments();
       set({ departments, isLoading: false });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '부서 목록 조회 실패';
+      const message = error instanceof Error ? error.message : i18n.t('errors.departments.listFallback');
       set({ error: message, isLoading: false });
     }
   },

@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import i18n from '@/i18n/config';
 import type { User } from '@/types/database.types';
 
 type SafeUser = Omit<User, 'password_hash'>;
@@ -13,7 +14,7 @@ export async function getAllUsers(): Promise<SafeUser[]> {
     .order('username', { ascending: true });
 
   if (error) {
-    throw new Error(`사용자 목록 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.users.fetchFailed', { message: error.message }));
   }
 
   return (data ?? []) as SafeUser[];
@@ -30,7 +31,7 @@ export async function getUserById(id: string): Promise<SafeUser | null> {
     if (error.code === 'PGRST116') {
       return null;
     }
-    throw new Error(`사용자 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.users.getByIdFailed', { message: error.message }));
   }
 
   return data as SafeUser;
@@ -40,7 +41,6 @@ export type CreateUserData = Omit<
   User,
   'user_id' | 'created_at' | 'updated_at' | 'password_hash'
 > & {
-  // password_hash must be set server-side via bcrypt before inserting
   password_hash: string;
 };
 
@@ -52,7 +52,7 @@ export async function createUser(data: CreateUserData): Promise<SafeUser> {
     .single();
 
   if (error) {
-    throw new Error(`사용자 생성 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.users.createFailed', { message: error.message }));
   }
 
   return created as SafeUser;
@@ -71,7 +71,7 @@ export async function updateUser(id: string, data: UpdateUserData): Promise<Safe
     .single();
 
   if (error) {
-    throw new Error(`사용자 수정 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.users.updateFailed', { message: error.message }));
   }
 
   return updated as SafeUser;
@@ -84,7 +84,7 @@ export async function deactivateUser(id: string): Promise<void> {
     .eq('user_id', id);
 
   if (error) {
-    throw new Error(`사용자 비활성화 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.users.deactivateFailed', { message: error.message }));
   }
 }
 
@@ -95,6 +95,6 @@ export async function activateUser(id: string): Promise<void> {
     .eq('user_id', id);
 
   if (error) {
-    throw new Error(`사용자 활성화 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.users.activateFailed', { message: error.message }));
   }
 }

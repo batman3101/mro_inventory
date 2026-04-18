@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import axios from 'axios';
+import i18n from '@/i18n/config';
 import type { User } from '../types/database.types';
 import { useLocationStore } from './location.store';
 
@@ -27,19 +28,19 @@ export const useAuthStore = create<AuthState>()(
       login: async (email: string, password: string): Promise<boolean> => {
         set({ isLoading: true, error: null });
 
-        // DEV 모드: Supabase/서버 없이 프론트엔드 확인용
+        // DEV mode: frontend-only test user without Supabase/server
         if (email === 'admin@mro.dev' && password === 'admin1234') {
           const devUser: SafeUser = {
             user_id: 'dev-admin-uuid',
             username: 'admin',
-            full_name: '관리자',
+            full_name: i18n.t('auth.devAdminFullName'),
             email: 'admin@mro.dev',
             role: 'system_admin',
             department_id: null,
             location_id: null,
             is_active: true,
             phone_number: '010-0000-0000',
-            position: '시스템 관리자',
+            position: i18n.t('auth.devAdminPosition'),
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString(),
           };
@@ -64,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
           const message =
             axios.isAxiosError(err) && err.response?.data?.error
               ? (err.response.data.error as string)
-              : '로그인 중 오류가 발생했습니다.';
+              : i18n.t('errors.auth.loginFailed');
           set({ user: null, isAuthenticated: false, isLoading: false, error: message });
           return false;
         }

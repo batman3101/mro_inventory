@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n/config';
 import type { Inbound } from '@/types/database.types';
 import * as inboundService from '@/services/inbound.service';
 
@@ -23,7 +24,7 @@ export const useInboundStore = create<InboundState>((set) => ({
       const inboundRecords = await inboundService.getAllInbound();
       set({ inboundRecords, isLoading: false });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '입고 목록 조회 실패';
+      const message = error instanceof Error ? error.message : i18n.t('errors.inbound.listFallback');
       set({ error: message, isLoading: false });
     }
   },

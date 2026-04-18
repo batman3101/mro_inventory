@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import i18n from '@/i18n/config';
 import type { Outbound } from '@/types/database.types';
 import { getOptionalLocationId } from '@/services/locationContext';
 
@@ -15,7 +16,7 @@ export async function getAllOutbound(): Promise<Outbound[]> {
     .order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error(`출고 목록 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.outbound.fetchFailed', { message: error.message }));
   }
 
   return (data ?? []).map((row: any) => ({
@@ -40,7 +41,7 @@ export async function getOutboundById(id: string): Promise<Outbound | null> {
     if (error.code === 'PGRST116') {
       return null;
     }
-    throw new Error(`출고 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.outbound.getByIdFailed', { message: error.message }));
   }
 
   return {
@@ -68,7 +69,7 @@ export async function generateReferenceNumber(): Promise<string> {
     .limit(1);
 
   if (error) {
-    throw new Error(`출고 번호 생성 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.outbound.generateRefFailed', { message: error.message }));
   }
 
   if (!data || data.length === 0) {
@@ -97,7 +98,7 @@ export async function checkStock(
     if (error.code === 'PGRST116') {
       return 0;
     }
-    throw new Error(`재고 조회 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.outbound.stockCheckFailed', { message: error.message }));
   }
 
   return data?.current_quantity ?? 0;
@@ -113,7 +114,10 @@ export async function createOutbound(
 
   if (currentQty < data.quantity) {
     throw new Error(
-      `재고가 부족합니다. 현재 재고: ${currentQty}, 요청: ${data.quantity}`
+      i18n.t('errors.outbound.stockInsufficient', {
+        current: currentQty,
+        requested: data.quantity,
+      })
     );
   }
 
@@ -126,7 +130,7 @@ export async function createOutbound(
     .single();
 
   if (insertError) {
-    throw new Error(`출고 등록 실패: ${insertError.message}`);
+    throw new Error(i18n.t('errors.outbound.createFailed', { message: insertError.message }));
   }
 
   const { error: updateError } = await supabase
@@ -136,7 +140,7 @@ export async function createOutbound(
     .eq('location_id', data.location_id);
 
   if (updateError) {
-    throw new Error(`재고 차감 실패: ${updateError.message}`);
+    throw new Error(i18n.t('errors.outbound.stockDeductFailed', { message: updateError.message }));
   }
 
   return {
@@ -155,6 +159,6 @@ export async function deleteOutbound(id: string): Promise<void> {
     .eq('outbound_id', id);
 
   if (error) {
-    throw new Error(`출고 삭제 실패: ${error.message}`);
+    throw new Error(i18n.t('errors.outbound.deleteFailed', { message: error.message }));
   }
 }

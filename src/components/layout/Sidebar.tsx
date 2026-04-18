@@ -52,9 +52,18 @@ const Sidebar = ({ collapsed }: SidebarProps) => {
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           borderBottom: '1px solid #374151',
+          display: 'flex',
+          alignItems: 'center',
+          gap: collapsed ? 0 : 10,
+          justifyContent: collapsed ? 'center' : 'flex-start',
         }}
       >
-        {collapsed ? 'MRO' : t('common.appName')}
+        <img
+          src="/A%20symbol%20BLUE-02.png"
+          alt="Almus"
+          style={{ height: collapsed ? 24 : 28, width: 'auto', flexShrink: 0 }}
+        />
+        {!collapsed && <span>{t('common.appName')}</span>}
       </div>
 
       <Menu

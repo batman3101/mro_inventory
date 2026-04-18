@@ -22,7 +22,9 @@
     "error": "오류",
     "warning": "경고",
     "unassigned": "미지정",
-    "selectLocation": "위치를 선택하세요"
+    "selectLocation": "위치를 선택하세요",
+    "createdAt": "생성일시",
+    "updatedAt": "수정일시"
   },
   "menu": {
     "dashboard": "대시보드",
@@ -41,7 +43,9 @@
     "email": "이메일",
     "password": "비밀번호",
     "loginButton": "로그인",
-    "loginError": "이메일 또는 비밀번호가 잘못되었습니다."
+    "loginError": "이메일 또는 비밀번호가 잘못되었습니다.",
+    "devAdminFullName": "관리자",
+    "devAdminPosition": "시스템 관리자"
   },
   "dashboard": {
     "title": "대시보드",
@@ -277,6 +281,122 @@
       "admin": "관리자",
       "user": "사용자",
       "viewer": "열람자"
+    }
+  },
+  "components": {
+    "loginSubtitle": "소모품 관리 시스템",
+    "languageSelect": "언어 선택",
+    "factorySelect": "공장 선택"
+  },
+  "errors": {
+    "auth": {
+      "loginFailed": "로그인 중 오류가 발생했습니다."
+    },
+    "location": {
+      "notSelected": "위치가 선택되지 않았습니다."
+    },
+    "items": {
+      "fetchFailed": "품목 목록 조회 실패: {{message}}",
+      "getByIdFailed": "품목 조회 실패: {{message}}",
+      "generateCodeFailed": "품목 코드 생성 실패: {{message}}",
+      "createFailed": "품목 생성 실패: {{message}}",
+      "updateFailed": "품목 수정 실패: {{message}}",
+      "deleteFailed": "품목 삭제 실패: {{message}}",
+      "searchFailed": "품목 검색 실패: {{message}}",
+      "fetchByCategoryFailed": "카테고리별 품목 조회 실패: {{message}}",
+      "listFallback": "품목 목록 조회 실패"
+    },
+    "inbound": {
+      "fetchFailed": "입고 목록 조회 실패: {{message}}",
+      "getByIdFailed": "입고 조회 실패: {{message}}",
+      "generateRefFailed": "입고번호 생성 실패: {{message}}",
+      "createFailed": "입고 등록 실패: {{message}}",
+      "updateFailed": "입고 수정 실패: {{message}}",
+      "deleteFailed": "입고 삭제 실패: {{message}}",
+      "inventoryFetchFailed": "재고 조회 실패: {{message}}",
+      "inventoryUpdateFailed": "재고 수량 업데이트 실패: {{message}}",
+      "inventoryCreateFailed": "재고 생성 실패: {{message}}",
+      "listFallback": "입고 목록 조회 실패"
+    },
+    "outbound": {
+      "fetchFailed": "출고 목록 조회 실패: {{message}}",
+      "getByIdFailed": "출고 조회 실패: {{message}}",
+      "generateRefFailed": "출고 번호 생성 실패: {{message}}",
+      "stockCheckFailed": "재고 조회 실패: {{message}}",
+      "stockInsufficient": "재고가 부족합니다. 현재 재고: {{current}}, 요청: {{requested}}",
+      "createFailed": "출고 등록 실패: {{message}}",
+      "stockDeductFailed": "재고 차감 실패: {{message}}",
+      "deleteFailed": "출고 삭제 실패: {{message}}",
+      "listFallback": "출고 목록 조회 실패"
+    },
+    "suppliers": {
+      "fetchFailed": "공급업체 목록 조회 실패: {{message}}",
+      "getByIdFailed": "공급업체 조회 실패: {{message}}",
+      "createFailed": "공급업체 생성 실패: {{message}}",
+      "updateFailed": "공급업체 수정 실패: {{message}}",
+      "deleteFailed": "공급업체 삭제 실패: {{message}}",
+      "listFallback": "공급업체 목록 조회 실패"
+    },
+    "departments": {
+      "fetchFailed": "부서 목록 조회 실패: {{message}}",
+      "getByIdFailed": "부서 조회 실패: {{message}}",
+      "createFailed": "부서 생성 실패: {{message}}",
+      "updateFailed": "부서 수정 실패: {{message}}",
+      "deleteFailed": "부서 삭제 실패: {{message}}",
+      "listFallback": "부서 목록 조회 실패"
+    },
+    "users": {
+      "fetchFailed": "사용자 목록 조회 실패: {{message}}",
+      "getByIdFailed": "사용자 조회 실패: {{message}}",
+      "createFailed": "사용자 생성 실패: {{message}}",
+      "updateFailed": "사용자 수정 실패: {{message}}",
+      "deactivateFailed": "사용자 비활성화 실패: {{message}}",
+      "activateFailed": "사용자 활성화 실패: {{message}}",
+      "listFallback": "사용자 목록 조회 실패"
+    },
+    "inventory": {
+      "fetchFailed": "재고 목록 조회 실패: {{message}}",
+      "getByIdFailed": "재고 조회 실패: {{message}}",
+      "updateQuantityFailed": "재고 수량 수정 실패: {{message}}",
+      "alertsFetchFailed": "재주문 알림 조회 실패: {{message}}",
+      "acknowledgeAlertFailed": "알림 확인 처리 실패: {{message}}",
+      "resolveAlertFailed": "알림 해결 처리 실패: {{message}}",
+      "listFallback": "재고 목록 조회 실패",
+      "alertsFallback": "재주문 알림 조회 실패"
+    },
+    "itemPrice": {
+      "fetchFailed": "품목 단가 목록 조회 실패: {{message}}",
+      "currentFetchFailed": "현재 단가 조회 실패: {{message}}",
+      "deactivateCurrentFailed": "기존 단가 비활성화 실패: {{message}}",
+      "createFailed": "품목 단가 생성 실패: {{message}}",
+      "updateFailed": "품목 단가 수정 실패: {{message}}",
+      "deleteFailed": "품목 단가 삭제 실패: {{message}}",
+      "listFallback": "품목 단가 목록 조회 실패"
+    }
+  },
+  "excel": {
+    "templates": {
+      "itemImport": {
+        "sheetName": "소모품가져오기",
+        "fileName": "MRO_소모품_가져오기_템플릿.xlsx",
+        "columns": {
+          "itemName": "소모품명",
+          "koreanName": "한국어명",
+          "vietnameseName": "베트남어명",
+          "categoryCode": "카테고리코드",
+          "spec": "규격",
+          "unit": "단위",
+          "minStock": "최소재고",
+          "maxStock": "최대재고",
+          "reorderPoint": "재주문점",
+          "storageLocation": "보관위치",
+          "description": "설명"
+        }
+      }
+    },
+    "validation": {
+      "required": "필수 항목입니다",
+      "mustBeNumber": "숫자여야 합니다"
     }
   }
 }

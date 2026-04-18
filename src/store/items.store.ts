@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import i18n from '@/i18n/config';
 import type { Item } from '@/types/database.types';
 import * as itemsService from '@/services/items.service';
 
@@ -29,7 +30,7 @@ export const useItemsStore = create<ItemsState>((set) => ({
       const items = await itemsService.getAllItems();
       set({ items, isLoading: false });
     } catch (error) {
-      const message = error instanceof Error ? error.message : '품목 목록 조회 실패';
+      const message = error instanceof Error ? error.message : i18n.t('errors.items.listFallback');
       set({ error: message, isLoading: false });
     }
   },

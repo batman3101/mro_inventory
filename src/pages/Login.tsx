@@ -52,7 +52,7 @@ const Login = () => {
           >
             MRO Inventory
           </Title>
-          <Text type="secondary">소모품 관리 시스템</Text>
+          <Text type="secondary">{t('components.loginSubtitle')}</Text>
         </div>
 
         {error && (
