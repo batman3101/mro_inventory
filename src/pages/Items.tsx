@@ -2,11 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import {
   Button, Input, Select, Modal, Form, Tag, Space,
   Popconfirm, message, Card, Row, Col, Descriptions,
+  Upload, Alert, List,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import {
   PlusOutlined, SearchOutlined, DownloadOutlined,
-  EditOutlined, DeleteOutlined, EyeOutlined,
+  EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
@@ -64,6 +65,14 @@ const Items = () => {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<ItemFormValues>();
+  const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
+  const [bulkPriceLoading, setBulkPriceLoading] = useState(false);
+  const [bulkPriceResult, setBulkPriceResult] = useState<{
+    total: number;
+    success: number;
+    failed: number;
+    errors: string[];
+  } | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
@@ -211,6 +220,154 @@ const Items = () => {
     XLSX.writeFile(wb, `MRO_${t('items.priceTemplate')}.xlsx`);
   };
 
+  const parseExcelDate = (raw: unknown): string | null => {
+    if (raw == null || raw === '') return null;
+    if (raw instanceof Date) {
+      if (isNaN(raw.getTime())) return null;
+      return raw.toISOString().slice(0, 10);
+    }
+    const s = String(raw).trim();
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    return null;
+  };
+
+  const handleBulkPriceUpload = async (file: File) => {
+    setBulkPriceLoading(true);
+    setBulkPriceResult(null);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
+
+      const { data: suppliers } = await supabase
+        .from('suppliers')
+        .select('supplier_id, supplier_name');
+      const supplierMap = new Map<string, string>();
+      (suppliers ?? []).forEach((s) => {
+        const supplier = s as { supplier_id: string; supplier_name: string };
+        supplierMap.set(supplier.supplier_name.trim(), supplier.supplier_id);
+      });
+      const itemMap = new Map(items.map((i) => [i.item_code, i.item_id]));
+      const locationId = getOptionalLocationId() || 'loc-1';
+      const today = new Date().toISOString().slice(0, 10);
+
+      const codeCol = t('items.itemCode');
+      const priceCol = t('items.unitPrice');
+      const currencyCol = t('items.currency');
+      const supplierCol = t('suppliers.supplierName');
+      const effCol = t('items.effectiveFrom');
+
+      const errors: string[] = [];
+      let success = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const rowNum = i + 2;
+        const itemCode = String(row[codeCol] ?? '').trim();
+        if (!itemCode) {
+          errors.push(
+            t('items.bulkPriceErrorRow', {
+              row: rowNum,
+              msg: t('items.bulkPriceErrorItemCodeRequired'),
+            }),
+          );
+          continue;
+        }
+        const itemId = itemMap.get(itemCode);
+        if (!itemId) {
+          errors.push(
+            t('items.bulkPriceErrorRow', {
+              row: rowNum,
+              msg: t('items.bulkPriceErrorItemNotFound', { code: itemCode }),
+            }),
+          );
+          continue;
+        }
+
+        const priceNum = Number(row[priceCol]);
+        if (!Number.isFinite(priceNum) || priceNum <= 0) {
+          errors.push(
+            t('items.bulkPriceErrorRow', {
+              row: rowNum,
+              msg: t('items.bulkPriceErrorInvalidPrice'),
+            }),
+          );
+          continue;
+        }
+
+        const rawEff = row[effCol];
+        let effFrom = today;
+        if (rawEff !== '' && rawEff != null) {
+          const parsed = parseExcelDate(rawEff);
+          if (!parsed) {
+            errors.push(
+              t('items.bulkPriceErrorRow', {
+                row: rowNum,
+                msg: t('items.bulkPriceErrorInvalidDate'),
+              }),
+            );
+            continue;
+          }
+          effFrom = parsed;
+        }
+
+        const currency = String(row[currencyCol] ?? 'KRW').trim() || 'KRW';
+        const supplierName = String(row[supplierCol] ?? '').trim();
+        let supplierId: string | null = null;
+        if (supplierName) {
+          const found = supplierMap.get(supplierName);
+          if (!found) {
+            errors.push(
+              t('items.bulkPriceErrorRow', {
+                row: rowNum,
+                msg: t('items.bulkPriceErrorSupplierNotFound', { name: supplierName }),
+              }),
+            );
+            continue;
+          }
+          supplierId = found;
+        }
+
+        try {
+          await createItemPrice({
+            item_id: itemId,
+            location_id: locationId,
+            unit_price: priceNum,
+            currency,
+            supplier_id: supplierId,
+            effective_from: effFrom,
+            effective_to: null,
+            is_current: true,
+            created_by: '',
+          });
+          success++;
+        } catch (e) {
+          errors.push(
+            t('items.bulkPriceErrorRow', {
+              row: rowNum,
+              msg: e instanceof Error ? e.message : 'unknown',
+            }),
+          );
+        }
+      }
+
+      setBulkPriceResult({
+        total: rows.length,
+        success,
+        failed: errors.length,
+        errors,
+      });
+      if (success > 0) fetchData();
+    } catch {
+      message.error(t('items.bulkPriceParseFailed'));
+    } finally {
+      setBulkPriceLoading(false);
+    }
+    return false;
+  };
+
   const categoryFilters = useMemo(
     () => categories.map((c) => ({ text: c.category_name, value: c.category_id })),
     [categories],
@@ -263,6 +420,7 @@ const Items = () => {
         <h2 style={{ margin: 0 }}>{t('items.title')}</h2>
         <Space>
           <Button icon={<DownloadOutlined />} onClick={handlePriceTemplate}>{t('items.priceTemplate')}</Button>
+          <Button icon={<UploadOutlined />} onClick={() => { setBulkPriceResult(null); setBulkPriceOpen(true); }}>{t('items.bulkPriceUpload')}</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>{t('items.addItem')}</Button>
         </Space>
       </div>
@@ -350,6 +508,63 @@ const Items = () => {
             <Descriptions.Item label={t('common.updatedAt')}>{detailItem.updated_at}</Descriptions.Item>
           </Descriptions>
         )}
+      </Modal>
+
+      <Modal
+        title={t('items.bulkPriceDialogTitle')}
+        open={bulkPriceOpen}
+        onCancel={() => setBulkPriceOpen(false)}
+        footer={<Button onClick={() => setBulkPriceOpen(false)}>{t('common.cancel')}</Button>}
+        width={680}
+        destroyOnClose
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Alert type="info" showIcon message={t('items.bulkPriceHelp')} />
+
+          <Upload.Dragger
+            multiple={false}
+            accept=".xlsx,.xls"
+            showUploadList={false}
+            disabled={bulkPriceLoading}
+            beforeUpload={(file) => {
+              handleBulkPriceUpload(file);
+              return false;
+            }}
+          >
+            <p className="ant-upload-drag-icon">
+              <UploadOutlined />
+            </p>
+            <p className="ant-upload-text">{t('items.bulkPriceDropHint')}</p>
+          </Upload.Dragger>
+
+          {bulkPriceLoading && <Alert type="warning" message={t('items.bulkPriceProcessing')} />}
+
+          {bulkPriceResult && (
+            <>
+              <Alert
+                type={bulkPriceResult.failed === 0 ? 'success' : 'warning'}
+                showIcon
+                message={t('items.bulkPriceResultTitle')}
+                description={t('items.bulkPriceSummary', {
+                  total: bulkPriceResult.total,
+                  success: bulkPriceResult.success,
+                  failed: bulkPriceResult.failed,
+                })}
+              />
+              {bulkPriceResult.errors.length > 0 && (
+                <List
+                  size="small"
+                  bordered
+                  dataSource={bulkPriceResult.errors}
+                  style={{ maxHeight: 240, overflowY: 'auto' }}
+                  renderItem={(item) => (
+                    <List.Item style={{ color: '#ff4d4f' }}>{item}</List.Item>
+                  )}
+                />
+              )}
+            </>
+          )}
+        </Space>
       </Modal>
     </div>
   );

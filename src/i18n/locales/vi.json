@@ -119,7 +119,22 @@
     "activateSuccess": "Đã kích hoạt vật tư.",
     "unitPrice": "Đơn giá",
     "currency": "Tiền tệ",
-    "effectiveFrom": "Ngày áp dụng"
+    "effectiveFrom": "Ngày áp dụng",
+    "bulkPriceUpload": "Nhập đơn giá hàng loạt",
+    "bulkPriceDialogTitle": "Tải lên đơn giá hàng loạt",
+    "bulkPriceHelp": "Tải lên tệp Excel theo đúng định dạng mẫu.",
+    "bulkPriceDropHint": "Nhấp hoặc kéo tệp Excel vào đây",
+    "bulkPriceSelectFile": "Chọn tệp",
+    "bulkPriceProcessing": "Đang xử lý...",
+    "bulkPriceResultTitle": "Kết quả nhập hàng loạt",
+    "bulkPriceSummary": "Tổng {{total}} dòng — Thành công {{success}}, Thất bại {{failed}}",
+    "bulkPriceErrorRow": "Dòng {{row}}: {{msg}}",
+    "bulkPriceErrorItemCodeRequired": "Mã vật tư trống",
+    "bulkPriceErrorItemNotFound": "Không tìm thấy mã vật tư '{{code}}'",
+    "bulkPriceErrorInvalidPrice": "Đơn giá không hợp lệ",
+    "bulkPriceErrorInvalidDate": "Ngày áp dụng không hợp lệ",
+    "bulkPriceErrorSupplierNotFound": "Không tìm thấy nhà cung cấp '{{name}}'",
+    "bulkPriceParseFailed": "Không thể đọc tệp. Vui lòng kiểm tra định dạng mẫu."
   },
   "inventory": {
     "title": "Quản lý tồn kho",

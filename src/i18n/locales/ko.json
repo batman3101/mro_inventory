@@ -119,7 +119,22 @@
     "activateSuccess": "소모품이 활성화되었습니다.",
     "unitPrice": "단가",
     "currency": "통화",
-    "effectiveFrom": "적용시작일"
+    "effectiveFrom": "적용시작일",
+    "bulkPriceUpload": "단가 일괄등록",
+    "bulkPriceDialogTitle": "단가 일괄 업로드",
+    "bulkPriceHelp": "템플릿 파일의 형식대로 작성한 Excel 파일을 업로드하세요.",
+    "bulkPriceDropHint": "클릭하거나 Excel 파일을 이곳에 드래그",
+    "bulkPriceSelectFile": "파일 선택",
+    "bulkPriceProcessing": "처리 중...",
+    "bulkPriceResultTitle": "일괄 등록 결과",
+    "bulkPriceSummary": "총 {{total}}건 중 성공 {{success}}건, 실패 {{failed}}건",
+    "bulkPriceErrorRow": "{{row}}행: {{msg}}",
+    "bulkPriceErrorItemCodeRequired": "소모품코드가 비어있습니다",
+    "bulkPriceErrorItemNotFound": "소모품코드 '{{code}}'를 찾을 수 없습니다",
+    "bulkPriceErrorInvalidPrice": "단가가 유효하지 않습니다",
+    "bulkPriceErrorInvalidDate": "적용시작일이 유효하지 않습니다",
+    "bulkPriceErrorSupplierNotFound": "공급업체 '{{name}}'를 찾을 수 없습니다",
+    "bulkPriceParseFailed": "파일을 읽을 수 없습니다. 템플릿 형식을 확인하세요."
   },
   "inventory": {
     "title": "재고 관리",
