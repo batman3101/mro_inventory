@@ -11,9 +11,11 @@ import {
   message,
   Card,
   Breadcrumb,
+  Popconfirm,
+  Tooltip,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
-import { PlusOutlined, EditOutlined } from '@ant-design/icons';
+import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
 import type { User } from '@/types/database.types';
@@ -52,8 +54,16 @@ const Users = () => {
   const authUser = useAuthStore((s) => s.user);
   const isAdmin = authUser?.role === 'system_admin';
 
-  const { users, isLoading, fetchUsers, createUser, updateUser, deactivateUser, activateUser } =
-    useUsersStore();
+  const {
+    users,
+    isLoading,
+    fetchUsers,
+    createUser,
+    updateUser,
+    deactivateUser,
+    activateUser,
+    deleteUser,
+  } = useUsersStore();
   const { departments, fetchDepartments } = useDepartmentStore();
   const { locations } = useLocationStore();
 
@@ -156,6 +166,15 @@ const Users = () => {
     }
   };
 
+  const handleDelete = async (user: SafeUser) => {
+    try {
+      await deleteUser(user.user_id);
+      message.success(t('users.deleteSuccess'));
+    } catch (err) {
+      message.error(err instanceof Error ? err.message : t('common.error'));
+    }
+  };
+
   const columns: ColumnsType<SafeUser> = [
     {
       title: t('users.username'),
@@ -216,24 +235,50 @@ const Users = () => {
           {
             title: t('common.actions'),
             key: 'actions',
-            width: 120,
+            width: 160,
             fixed: 'right' as const,
-            render: (_: unknown, record: SafeUser) => (
-              <Space size="small">
-                <Button
-                  type="text"
-                  icon={<EditOutlined />}
-                  onClick={() => openEditModal(record)}
-                />
-                <Button
-                  type="text"
-                  danger={record.is_active}
-                  onClick={() => handleToggleActive(record)}
-                >
-                  {record.is_active ? t('users.deactivate') : t('users.activate')}
-                </Button>
-              </Space>
-            ),
+            render: (_: unknown, record: SafeUser) => {
+              const isSelf = authUser?.user_id === record.user_id;
+              const canDelete = !record.is_active && !isSelf;
+              const deleteTooltip = isSelf
+                ? t('users.deleteSelfDisabled')
+                : record.is_active
+                  ? t('users.deleteActiveDisabled')
+                  : '';
+
+              return (
+                <Space size="small">
+                  <Button
+                    type="text"
+                    icon={<EditOutlined />}
+                    onClick={() => openEditModal(record)}
+                  />
+                  {canDelete ? (
+                    <Popconfirm
+                      title={t('users.deleteConfirmTitle')}
+                      description={t('users.deleteConfirm', { username: record.username })}
+                      okText={t('common.delete')}
+                      cancelText={t('common.cancel')}
+                      okButtonProps={{ danger: true }}
+                      onConfirm={() => handleDelete(record)}
+                    >
+                      <Button type="text" danger icon={<DeleteOutlined />} />
+                    </Popconfirm>
+                  ) : (
+                    <Tooltip title={deleteTooltip}>
+                      <Button type="text" disabled icon={<DeleteOutlined />} />
+                    </Tooltip>
+                  )}
+                  <Button
+                    type="text"
+                    danger={record.is_active}
+                    onClick={() => handleToggleActive(record)}
+                  >
+                    {record.is_active ? t('users.deactivate') : t('users.activate')}
+                  </Button>
+                </Space>
+              );
+            },
           },
         ]
       : []),

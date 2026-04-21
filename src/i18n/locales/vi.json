@@ -271,6 +271,11 @@
     "updateSuccess": "Người dùng đã được cập nhật.",
     "deactivateSuccess": "Người dùng đã bị vô hiệu hóa.",
     "activateSuccess": "Người dùng đã được kích hoạt.",
+    "deleteConfirmTitle": "Bạn có chắc muốn xóa người dùng này?",
+    "deleteConfirm": "Xóa vĩnh viễn người dùng '{{username}}'. Hành động này không thể hoàn tác.",
+    "deleteSuccess": "Người dùng đã được xóa.",
+    "deleteActiveDisabled": "Không thể xóa người dùng đang hoạt động. Vui lòng vô hiệu hóa trước.",
+    "deleteSelfDisabled": "Không thể xóa tài khoản của chính bạn.",
     "usernameRequired": "Vui lòng nhập tên đăng nhập",
     "fullNameRequired": "Vui lòng nhập họ và tên",
     "emailRequired": "Vui lòng nhập email",
@@ -357,6 +362,7 @@
       "updateFailed": "Cập nhật người dùng thất bại: {{message}}",
       "deactivateFailed": "Vô hiệu hóa người dùng thất bại: {{message}}",
       "activateFailed": "Kích hoạt người dùng thất bại: {{message}}",
+      "deleteFailed": "Xóa người dùng thất bại: {{message}}",
       "listFallback": "Tải danh sách người dùng thất bại"
     },
     "inventory": {

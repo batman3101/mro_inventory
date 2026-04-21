@@ -22,6 +22,7 @@ interface UsersState {
   updateUser: (id: string, data: UpdateUserData) => Promise<void>;
   deactivateUser: (id: string) => Promise<void>;
   activateUser: (id: string) => Promise<void>;
+  deleteUser: (id: string) => Promise<void>;
 }
 
 export const useUsersStore = create<UsersState>((set) => ({
@@ -67,6 +68,13 @@ export const useUsersStore = create<UsersState>((set) => ({
       users: state.users.map((u) =>
         u.user_id === id ? { ...u, is_active: true } : u
       ),
+    }));
+  },
+
+  deleteUser: async (id) => {
+    await usersService.deleteUser(id);
+    set((state) => ({
+      users: state.users.filter((u) => u.user_id !== id),
     }));
   },
 }));

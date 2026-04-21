@@ -114,3 +114,15 @@ export async function activateUser(id: string): Promise<void> {
     throw new Error(i18n.t('errors.users.activateFailed', { message: error.message }));
   }
 }
+
+export async function deleteUser(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('users')
+    .delete()
+    .eq('user_id', id)
+    .eq('is_active', false);
+
+  if (error) {
+    throw new Error(i18n.t('errors.users.deleteFailed', { message: error.message }));
+  }
+}
