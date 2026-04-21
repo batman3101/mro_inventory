@@ -16,8 +16,8 @@ import { useSupplierStore } from '@/store/suppliers.store';
 import { useLocationStore } from '@/store/location.store';
 
 const { RangePicker } = DatePicker;
-const CURRENCY_SYMBOL: Record<string, string> = { KRW: '₩', USD: '$', VND: '₫' };
-const CURRENCY_OPTIONS = ['KRW', 'USD', 'VND'];
+const CURRENCY_SYMBOL: Record<string, string> = { VND: '₫', KRW: '₩', USD: '$' };
+const CURRENCY_OPTIONS = ['VND', 'KRW', 'USD'];
 
 interface InboundFormValues {
   item_id: string;
@@ -75,7 +75,7 @@ const InboundPage = () => {
   const openCreateModal = () => {
     setEditingRecord(null);
     form.resetFields();
-    form.setFieldsValue({ currency: 'KRW', inbound_date: dayjs() });
+    form.setFieldsValue({ currency: 'VND', inbound_date: dayjs() });
     setCalcTotal(0);
     setModalOpen(true);
   };
@@ -256,7 +256,7 @@ const InboundPage = () => {
             <InputNumber
               min={0} style={{ width: '100%' }}
               formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              addonAfter={CURRENCY_SYMBOL[form.getFieldValue('currency') as string] ?? '₩'}
+              addonAfter={CURRENCY_SYMBOL[form.getFieldValue('currency') as string] ?? '₫'}
             />
           </Form.Item>
           <Form.Item name="currency" label={t('inbound.currency')}>

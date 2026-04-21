@@ -35,7 +35,7 @@ const itemFormSchema = z.object({
   status: z.string().optional().default('ACTIVE'),
   description: z.string().optional().default(''),
   unit_price: z.number().min(0).optional(),
-  currency: z.string().optional().default('KRW'),
+  currency: z.string().optional().default('VND'),
 });
 
 type ItemFormValues = z.infer<typeof itemFormSchema>;
@@ -114,7 +114,7 @@ const Items = () => {
   const openCreateModal = () => {
     setEditingItem(null);
     form.resetFields();
-    form.setFieldsValue({ status: 'ACTIVE' });
+    form.setFieldsValue({ status: 'ACTIVE', currency: 'VND' });
     setModalOpen(true);
   };
 
@@ -162,7 +162,7 @@ const Items = () => {
             item_id: created.item_id,
             location_id: locationId,
             unit_price: values.unit_price,
-            currency: values.currency ?? 'KRW',
+            currency: values.currency ?? 'VND',
             supplier_id: null,
             effective_from: new Date().toISOString().slice(0, 10),
             effective_to: null,
@@ -211,7 +211,7 @@ const Items = () => {
 
   const handlePriceTemplate = () => {
     const headers = [
-      { [t('items.itemCode')]: '', [t('items.itemName')]: '', [t('items.unitPrice')]: '', [t('items.currency')]: 'KRW', [t('suppliers.supplierName')]: '', [t('items.effectiveFrom')]: '' },
+      { [t('items.itemCode')]: '', [t('items.itemName')]: '', [t('items.unitPrice')]: '', [t('items.currency')]: 'VND', [t('suppliers.supplierName')]: '', [t('items.effectiveFrom')]: '' },
     ];
     const ws = XLSX.utils.json_to_sheet(headers);
     ws['!cols'] = [{ wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 15 }];
@@ -313,7 +313,7 @@ const Items = () => {
           effFrom = parsed;
         }
 
-        const currency = String(row[currencyCol] ?? 'KRW').trim() || 'KRW';
+        const currency = String(row[currencyCol] ?? 'VND').trim() || 'VND';
         const supplierName = String(row[supplierCol] ?? '').trim();
         let supplierId: string | null = null;
         if (supplierName) {
@@ -469,9 +469,9 @@ const Items = () => {
             </Form.Item>
             <Form.Item name="currency" label={t('items.currency')}>
               <Select>
+                <Option value="VND">VND (₫)</Option>
                 <Option value="KRW">KRW (₩)</Option>
                 <Option value="USD">USD ($)</Option>
-                <Option value="VND">VND (₫)</Option>
               </Select>
             </Form.Item>
           </div>
