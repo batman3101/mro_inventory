@@ -21,6 +21,7 @@
     "@types/react-resizable": "^3.0.8",
     "antd": "^5.28.0",
     "axios": "^1.13.2",
+    "bcryptjs": "^3.0.3",
     "dayjs": "^1.11.19",
     "i18next": "^25.6.1",
     "react": "^18.3.1",
