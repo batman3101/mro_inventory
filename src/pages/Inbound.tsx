@@ -202,7 +202,7 @@ const InboundPage = () => {
           <Card><Statistic title={t('inbound.totalCount')} value={stats.totalCount} valueStyle={{ color: '#3f8600' }} /></Card>
         </Col>
         <Col span={8}>
-          <Card><Statistic title={t('inbound.totalAmount')} value={stats.totalAmount.toLocaleString()} valueStyle={{ color: '#3f8600' }} /></Card>
+          <Card><Statistic title={t('inbound.totalAmount')} value={stats.totalAmount.toLocaleString()} suffix="₫" valueStyle={{ color: '#3f8600' }} /></Card>
         </Col>
       </Row>
 

@@ -210,8 +210,10 @@ const Dashboard = () => {
   }, [period, customRange]);
 
   const formatYAxis = (value: number) => {
-    if (value >= 1000) return `${(value / 1000).toFixed(0)}K`;
-    return String(value);
+    if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B ₫`;
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M ₫`;
+    if (value >= 1_000) return `${(value / 1_000).toFixed(0)}K ₫`;
+    return `${value} ₫`;
   };
 
   const getPeriodLabel = () => {
@@ -305,7 +307,7 @@ const Dashboard = () => {
             <CartesianGrid strokeDasharray="3 3" />
             <XAxis dataKey="date" tick={{ fontSize: 12 }} />
             <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 12 }} />
-            <Tooltip formatter={(value: number) => value.toLocaleString()} />
+            <Tooltip formatter={(value: number) => `${value.toLocaleString()} ₫`} />
             <Legend />
             <Line
               type="monotone"
