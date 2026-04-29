@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button,
   Modal,
@@ -53,33 +54,40 @@ const Departments = () => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    if (editingDept) {
+      form.setFieldsValue({
+        department_code: editingDept.department_code,
+        department_name: editingDept.department_name,
+        description: editingDept.description ?? '',
+      });
+    } else {
+      form.resetFields();
+    }
+  }, [modalOpen, editingDept, form]);
+
   const openCreateModal = () => {
     setEditingDept(null);
-    form.resetFields();
     setModalOpen(true);
   };
 
   const openEditModal = (dept: Department) => {
     setEditingDept(dept);
-    form.setFieldsValue({
-      department_code: dept.department_code,
-      department_name: dept.department_name,
-      description: dept.description ?? '',
-    });
     setModalOpen(true);
   };
 
   const handleModalCancel = () => {
     setModalOpen(false);
     setEditingDept(null);
-    form.resetFields();
   };
 
   const handleSubmit = async () => {
     let values: DepartmentFormValues;
     try {
       values = await form.validateFields();
-    } catch {
+    } catch (e) {
+      console.error('department form validation failed:', e);
       return;
     }
 
@@ -102,8 +110,9 @@ const Departments = () => {
       }
       handleModalCancel();
       fetchData();
-    } catch {
-      message.error(t('common.error'));
+    } catch (e) {
+      console.error('department submit failed:', e);
+      message.error(e instanceof Error ? e.message : t('common.error'));
     } finally {
       setSubmitting(false);
     }
@@ -114,8 +123,9 @@ const Departments = () => {
       await deleteDepartment(departmentId);
       message.success(t('departments.deleteSuccess'));
       setDepartments((prev) => prev.filter((d) => d.department_id !== departmentId));
-    } catch {
-      message.error(t('common.error'));
+    } catch (e) {
+      console.error('department delete failed:', e);
+      message.error(e instanceof Error ? e.message : t('common.error'));
     }
   };
 
@@ -193,7 +203,7 @@ const Departments = () => {
         />
       </Card>
 
-      <Modal
+      <DraggableModal
         title={editingDept ? t('departments.editDepartment') : t('departments.createDepartment')}
         open={modalOpen}
         onOk={handleSubmit}
@@ -201,9 +211,9 @@ const Departments = () => {
         okText={t('common.save')}
         cancelText={t('common.cancel')}
         confirmLoading={submitting}
-        destroyOnClose
+        destroyOnHidden
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
+        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
           <Form.Item
             name="department_code"
             label={t('departments.departmentCode')}
@@ -222,7 +232,7 @@ const Departments = () => {
             <Input.TextArea rows={3} />
           </Form.Item>
         </Form>
-      </Modal>
+      </DraggableModal>
     </div>
   );
 };

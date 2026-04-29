@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { DraggableModal } from "@/components/DraggableModal";
 import {
-  Button, Input, Select, Modal, Form, Space, Popconfirm,
+  Button, Input, Select, Form, Space, Popconfirm,
   message, Card, Row, Col, Statistic, InputNumber, DatePicker, Alert,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
@@ -93,43 +94,53 @@ const OutboundPage = () => {
     ).length,
   }), [outboundRecords]);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    if (editingRecord) {
+      setSelectedLocationId(editingRecord.location_id);
+      form.setFieldsValue({
+        item_id: editingRecord.item_id,
+        quantity: editingRecord.quantity,
+        requester: editingRecord.requester,
+        department_id: editingRecord.department_id,
+        purpose: editingRecord.purpose,
+        cost_center: editingRecord.cost_center,
+        outbound_date: dayjs(editingRecord.outbound_date),
+        notes: editingRecord.notes,
+      });
+    } else {
+      form.resetFields();
+      form.setFieldsValue({ outbound_date: dayjs() });
+      setSelectedLocationId('');
+    }
+    setCurrentStock(null);
+  }, [modalOpen, editingRecord, form]);
+
   const openCreateModal = () => {
     setEditingRecord(null);
-    form.resetFields();
-    form.setFieldsValue({ outbound_date: dayjs() });
-    setCurrentStock(null);
-    setSelectedLocationId('');
     setModalOpen(true);
   };
 
   const openEditModal = (record: Outbound) => {
     setEditingRecord(record);
-    setSelectedLocationId(record.location_id);
-    form.setFieldsValue({
-      item_id: record.item_id,
-      quantity: record.quantity,
-      requester: record.requester,
-      department_id: record.department_id,
-      purpose: record.purpose,
-      cost_center: record.cost_center,
-      outbound_date: dayjs(record.outbound_date),
-      notes: record.notes,
-    });
-    setCurrentStock(null);
     setModalOpen(true);
   };
 
   const handleModalCancel = () => {
     setModalOpen(false);
     setEditingRecord(null);
-    form.resetFields();
     setCurrentStock(null);
     setSelectedLocationId('');
   };
 
   const handleSubmit = async () => {
     let values: OutboundFormValues;
-    try { values = await form.validateFields(); } catch { return; }
+    try {
+      values = await form.validateFields();
+    } catch (e) {
+      console.error('outbound form validation failed:', e);
+      return;
+    }
     if (!selectedLocationId) { message.warning(t('outbound.locationSelect')); return; }
 
     setSubmitting(true);
@@ -169,8 +180,9 @@ const OutboundPage = () => {
     try {
       await deleteOutbound(id);
       message.success(t('outbound.deleteSuccess'));
-    } catch {
-      message.error(t('common.error'));
+    } catch (e) {
+      console.error('outbound delete failed:', e);
+      message.error(e instanceof Error ? e.message : t('common.error'));
     }
   };
 
@@ -265,11 +277,11 @@ const OutboundPage = () => {
           pagination={{ pageSize: 20, showSizeChanger: false, showTotal: (n) => t('common.total', { count: n }) }} />
       </Card>
 
-      <Modal title={editingRecord ? t('common.edit') : t('outbound.newOutbound')}
+      <DraggableModal title={editingRecord ? t('common.edit') : t('outbound.newOutbound')}
         open={modalOpen} onOk={handleSubmit} onCancel={handleModalCancel}
         okText={t('common.save')} cancelText={t('common.cancel')}
-        confirmLoading={submitting} width={600} destroyOnClose>
-        <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
+        confirmLoading={submitting} width={600} destroyOnHidden>
+        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
           <Form.Item name="item_id" label={t('outbound.itemSelect')} rules={[{ required: true, message: t('items.itemNameRequired') }]}>
             <Select showSearch placeholder={t('outbound.itemSelect')} optionFilterProp="label"
               options={items.map((item) => ({ value: item.item_id, label: `${item.item_code} - ${item.item_name}` }))} />
@@ -318,7 +330,7 @@ const OutboundPage = () => {
             <Input.TextArea rows={3} />
           </Form.Item>
         </Form>
-      </Modal>
+      </DraggableModal>
     </div>
   );
 };

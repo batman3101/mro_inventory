@@ -24,22 +24,25 @@ export async function getAllInventory(): Promise<InventoryWithItem[]> {
   if (locationId) {
     query = query.eq('location_id', locationId);
   }
-  const { data, error } = await query.order('items(item_code)', { ascending: true });
+  // PostgREST embedded-resource order ('items(item_code)') was rejecting with
+  // 400 on this project's schema. Sort client-side instead — dataset is small
+  // (one row per item per location) and this avoids depending on FK cache.
+  const { data, error } = await query;
 
   if (error) {
     throw new Error(i18n.t('errors.inventory.fetchFailed', { message: error.message }));
   }
 
-  return ((data ?? []) as unknown as Array<Inventory & { items: { item_code: string; item_name: string; unit: string; reorder_point: number; min_stock: number } }>).map(
-    ({ items, ...inv }) => ({
+  return ((data ?? []) as unknown as Array<Inventory & { items: { item_code: string; item_name: string; unit: string; reorder_point: number; min_stock: number } }>)
+    .map(({ items, ...inv }) => ({
       ...inv,
       item_code: items?.item_code ?? '',
       item_name: items?.item_name ?? '',
       unit: items?.unit ?? '',
       reorder_point: items?.reorder_point ?? 0,
       min_stock: items?.min_stock ?? 0,
-    })
-  );
+    }))
+    .sort((a, b) => a.item_code.localeCompare(b.item_code));
 }
 
 export async function getInventoryByItemId(itemId: string): Promise<InventoryWithItem | null> {

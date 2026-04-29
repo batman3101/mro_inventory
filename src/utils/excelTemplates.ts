@@ -1,13 +1,20 @@
 import * as XLSX from 'xlsx';
 import i18n from '@/i18n/config';
 
+// B안 컬럼 순서: 사용자가 자주 작성하는 핵심 정보 먼저 → 부수 정보 뒤로.
+// itemCode = 사내코드 = 소모품코드 (사용자 입력, UNIQUE).
 const COLUMN_KEYS = [
+  'itemCode',
   'itemName',
+  'categoryName',
+  'unit',
+  'unitPrice',
+  'currency',
+  'supplierName',
+  'effectiveFrom',
+  'spec',
   'koreanName',
   'vietnameseName',
-  'categoryCode',
-  'spec',
-  'unit',
   'minStock',
   'maxStock',
   'reorderPoint',
@@ -17,15 +24,58 @@ const COLUMN_KEYS = [
 
 type ColumnKey = (typeof COLUMN_KEYS)[number];
 
-function getColumnHeader(key: ColumnKey): string {
+export function getColumnHeader(key: ColumnKey): string {
   return i18n.t(`excel.templates.itemImport.columns.${key}`);
 }
 
-// Generate template for bulk item import
+export const ITEM_IMPORT_COLUMN_KEYS = COLUMN_KEYS;
+
+// Two example rows ship in the template so the two main usage modes are
+// self-documenting:
+//   row 1 — create a new item with an initial price (item_code blank)
+//   row 2 — add a new price to an existing item (item_code filled, only
+//           pricing columns populated)
+function buildExampleRows(): Record<string, string | number>[] {
+  const headers = COLUMN_KEYS.map(getColumnHeader);
+  const today = new Date().toISOString().slice(0, 10);
+
+  const blank = (): Record<string, string | number> => {
+    const r: Record<string, string | number> = {};
+    headers.forEach((h) => { r[h] = ''; });
+    return r;
+  };
+
+  const newItemRow = blank();
+  newItemRow[getColumnHeader('itemCode')] = 'SAMPLE-001';
+  newItemRow[getColumnHeader('itemName')] = 'Sample Bolt M8';
+  newItemRow[getColumnHeader('categoryName')] = '';
+  newItemRow[getColumnHeader('unit')] = 'EA';
+  newItemRow[getColumnHeader('unitPrice')] = 5000;
+  newItemRow[getColumnHeader('currency')] = 'VND';
+  newItemRow[getColumnHeader('supplierName')] = '';
+  newItemRow[getColumnHeader('effectiveFrom')] = today;
+  newItemRow[getColumnHeader('spec')] = 'M8 x 20';
+  newItemRow[getColumnHeader('koreanName')] = '샘플 볼트';
+  newItemRow[getColumnHeader('vietnameseName')] = 'Bu lông mẫu';
+  newItemRow[getColumnHeader('minStock')] = 50;
+  newItemRow[getColumnHeader('maxStock')] = 200;
+  newItemRow[getColumnHeader('reorderPoint')] = 100;
+  newItemRow[getColumnHeader('storageLocation')] = 'A-01';
+
+  const priceUpdateRow = blank();
+  priceUpdateRow[getColumnHeader('itemCode')] = 'SAMPLE-001';
+  priceUpdateRow[getColumnHeader('unitPrice')] = 5500;
+  priceUpdateRow[getColumnHeader('currency')] = 'VND';
+  priceUpdateRow[getColumnHeader('effectiveFrom')] = today;
+
+  return [newItemRow, priceUpdateRow];
+}
+
 export function downloadItemImportTemplate(): void {
   const headers = COLUMN_KEYS.map(getColumnHeader);
-  const worksheet = XLSX.utils.aoa_to_sheet([headers]);
-  worksheet['!cols'] = headers.map(() => ({ wch: 15 }));
+  const rows = buildExampleRows();
+  const worksheet = XLSX.utils.json_to_sheet(rows, { header: headers });
+  worksheet['!cols'] = headers.map((h) => ({ wch: Math.max(14, h.length + 4) }));
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(
     workbook,
@@ -35,86 +85,99 @@ export function downloadItemImportTemplate(): void {
   XLSX.writeFile(workbook, i18n.t('excel.templates.itemImport.fileName'));
 }
 
-interface ValidatedItemRow {
-  item_name: string;
-  korean_name: string;
-  vietnamese_name: string;
-  category_code: string;
+export interface ParsedItemRow {
+  itemCode: string;
+  itemName: string;
+  koreanName: string;
+  vietnameseName: string;
+  categoryName: string;
   spec: string;
   unit: string;
-  min_stock: number;
-  max_stock: number;
-  reorder_point: number;
-  storage_location: string;
+  minStock: number;
+  maxStock: number;
+  reorderPoint: number;
+  storageLocation: string;
   description: string;
+  unitPrice: number | null;
+  currency: string;
+  supplierName: string;
+  effectiveFrom: string | null;
 }
 
-function cellFor(row: Record<string, unknown>, key: ColumnKey): unknown {
+export function cellOf(row: Record<string, unknown>, key: ColumnKey): unknown {
   return row[getColumnHeader(key)];
 }
 
-// Validate imported item row
-export function validateItemRow(
-  row: Record<string, unknown>,
-  rowIndex: number
-): {
-  valid: boolean;
-  data?: ValidatedItemRow;
-  errors?: Array<{ field: string; message: string }>;
-} {
-  void rowIndex;
-  const errors: Array<{ field: string; message: string }> = [];
-  const requiredMsg = i18n.t('excel.validation.required');
-  const numberMsg = i18n.t('excel.validation.mustBeNumber');
-
-  const itemNameCell = cellFor(row, 'itemName');
-  const unitCell = cellFor(row, 'unit');
-  if (!itemNameCell) {
-    errors.push({ field: getColumnHeader('itemName'), message: requiredMsg });
+export function parseExcelDate(raw: unknown): string | null {
+  if (raw == null || raw === '') return null;
+  if (raw instanceof Date) {
+    if (isNaN(raw.getTime())) return null;
+    return raw.toISOString().slice(0, 10);
   }
-  if (!unitCell) {
-    errors.push({ field: getColumnHeader('unit'), message: requiredMsg });
-  }
+  const s = String(raw).trim();
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
 
-  const minStockRaw = cellFor(row, 'minStock');
-  const maxStockRaw = cellFor(row, 'maxStock');
-  const reorderPointRaw = cellFor(row, 'reorderPoint');
+function toNumber(raw: unknown): number {
+  if (raw === undefined || raw === null || raw === '') return 0;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : 0;
+}
 
-  const minStock =
-    minStockRaw !== undefined && minStockRaw !== '' ? Number(minStockRaw) : NaN;
-  const maxStock =
-    maxStockRaw !== undefined && maxStockRaw !== '' ? Number(maxStockRaw) : NaN;
-  const reorderPoint =
-    reorderPointRaw !== undefined && reorderPointRaw !== '' ? Number(reorderPointRaw) : NaN;
+function toNullableNumber(raw: unknown): number | null {
+  if (raw === undefined || raw === null || raw === '') return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
 
-  if (minStockRaw !== undefined && minStockRaw !== '' && isNaN(minStock)) {
-    errors.push({ field: getColumnHeader('minStock'), message: numberMsg });
-  }
-  if (maxStockRaw !== undefined && maxStockRaw !== '' && isNaN(maxStock)) {
-    errors.push({ field: getColumnHeader('maxStock'), message: numberMsg });
-  }
-  if (reorderPointRaw !== undefined && reorderPointRaw !== '' && isNaN(reorderPoint)) {
-    errors.push({ field: getColumnHeader('reorderPoint'), message: numberMsg });
+export function parseItemRow(
+  row: Record<string, unknown>
+): { ok: true; data: ParsedItemRow } | { ok: false; error: string } {
+  const itemCode = String(cellOf(row, 'itemCode') ?? '').trim();
+  const itemName = String(cellOf(row, 'itemName') ?? '').trim();
+  const unit = String(cellOf(row, 'unit') ?? '').trim();
+
+  // For new-item rows we need name + unit; price-only updates skip these
+  // because the row only carries pricing for an existing itemCode.
+  const isPriceOnly = !!itemCode && !itemName && !unit;
+  if (!isPriceOnly) {
+    if (!itemCode) return { ok: false, error: i18n.t('items.bulkErrorItemCodeRequired') };
+    if (!itemName) return { ok: false, error: i18n.t('items.bulkErrorItemNameRequired') };
+    if (!unit) return { ok: false, error: i18n.t('items.bulkErrorUnitRequired') };
   }
 
-  if (errors.length > 0) {
-    return { valid: false, errors };
+  const rawEff = cellOf(row, 'effectiveFrom');
+  let effectiveFrom: string | null = null;
+  if (rawEff !== undefined && rawEff !== null && rawEff !== '') {
+    effectiveFrom = parseExcelDate(rawEff);
+    if (!effectiveFrom) return { ok: false, error: i18n.t('items.bulkErrorInvalidDate') };
   }
+
+  const unitPrice = toNullableNumber(cellOf(row, 'unitPrice'));
+  if (unitPrice !== null && unitPrice < 0)
+    return { ok: false, error: i18n.t('items.bulkErrorInvalidPrice') };
 
   return {
-    valid: true,
+    ok: true,
     data: {
-      item_name: String(itemNameCell),
-      korean_name: String(cellFor(row, 'koreanName') ?? ''),
-      vietnamese_name: String(cellFor(row, 'vietnameseName') ?? ''),
-      category_code: String(cellFor(row, 'categoryCode') ?? ''),
-      spec: String(cellFor(row, 'spec') ?? ''),
-      unit: String(unitCell),
-      min_stock: isNaN(minStock) ? 0 : minStock,
-      max_stock: isNaN(maxStock) ? 0 : maxStock,
-      reorder_point: isNaN(reorderPoint) ? 0 : reorderPoint,
-      storage_location: String(cellFor(row, 'storageLocation') ?? ''),
-      description: String(cellFor(row, 'description') ?? ''),
+      itemCode,
+      itemName,
+      koreanName: String(cellOf(row, 'koreanName') ?? '').trim(),
+      vietnameseName: String(cellOf(row, 'vietnameseName') ?? '').trim(),
+      categoryName: String(cellOf(row, 'categoryName') ?? '').trim(),
+      spec: String(cellOf(row, 'spec') ?? '').trim(),
+      unit,
+      minStock: toNumber(cellOf(row, 'minStock')),
+      maxStock: toNumber(cellOf(row, 'maxStock')),
+      reorderPoint: toNumber(cellOf(row, 'reorderPoint')),
+      storageLocation: String(cellOf(row, 'storageLocation') ?? '').trim(),
+      description: String(cellOf(row, 'description') ?? '').trim(),
+      unitPrice,
+      currency: String(cellOf(row, 'currency') ?? 'VND').trim() || 'VND',
+      supplierName: String(cellOf(row, 'supplierName') ?? '').trim(),
+      effectiveFrom,
     },
   };
 }

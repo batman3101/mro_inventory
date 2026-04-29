@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button,
   Modal,
@@ -77,40 +78,47 @@ const Users = () => {
     fetchDepartments();
   }, []);
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    if (editingUser) {
+      form.setFieldsValue({
+        username: editingUser.username,
+        full_name: editingUser.full_name,
+        email: editingUser.email,
+        role: editingUser.role,
+        department_id: editingUser.department_id ?? undefined,
+        location_id: editingUser.location_id ?? undefined,
+        phone_number: editingUser.phone_number ?? undefined,
+        position: editingUser.position ?? undefined,
+        is_active: editingUser.is_active,
+      });
+    } else {
+      form.resetFields();
+      form.setFieldsValue({ is_active: true, role: 'user' });
+    }
+  }, [modalOpen, editingUser, form]);
+
   const openCreateModal = () => {
     setEditingUser(null);
-    form.resetFields();
-    form.setFieldsValue({ is_active: true, role: 'user' });
     setModalOpen(true);
   };
 
   const openEditModal = (user: SafeUser) => {
     setEditingUser(user);
-    form.setFieldsValue({
-      username: user.username,
-      full_name: user.full_name,
-      email: user.email,
-      role: user.role,
-      department_id: user.department_id ?? undefined,
-      location_id: user.location_id ?? undefined,
-      phone_number: user.phone_number ?? undefined,
-      position: user.position ?? undefined,
-      is_active: user.is_active,
-    });
     setModalOpen(true);
   };
 
   const handleModalCancel = () => {
     setModalOpen(false);
     setEditingUser(null);
-    form.resetFields();
   };
 
   const handleSubmit = async () => {
     let values: UserFormValues;
     try {
       values = await form.validateFields();
-    } catch {
+    } catch (e) {
+      console.error('user form validation failed:', e);
       return;
     }
 
@@ -145,8 +153,9 @@ const Users = () => {
       }
       handleModalCancel();
       fetchUsers();
-    } catch {
-      message.error(t('common.error'));
+    } catch (e) {
+      console.error('user submit failed:', e);
+      message.error(e instanceof Error ? e.message : t('common.error'));
     } finally {
       setSubmitting(false);
     }
@@ -161,8 +170,9 @@ const Users = () => {
         await activateUser(user.user_id);
         message.success(t('users.activateSuccess'));
       }
-    } catch {
-      message.error(t('common.error'));
+    } catch (e) {
+      console.error('user toggle active failed:', e);
+      message.error(e instanceof Error ? e.message : t('common.error'));
     }
   };
 
@@ -316,7 +326,7 @@ const Users = () => {
       </Card>
 
       {isAdmin && (
-        <Modal
+        <DraggableModal
           title={editingUser ? t('users.editUser') : t('users.createUser')}
           open={modalOpen}
           onOk={handleSubmit}
@@ -326,7 +336,7 @@ const Users = () => {
           confirmLoading={submitting}
           forceRender
         >
-          <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
+          <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
             <Form.Item
               name="username"
               label={t('users.username')}
@@ -425,7 +435,7 @@ const Users = () => {
               <Switch />
             </Form.Item>
           </Form>
-        </Modal>
+        </DraggableModal>
       )}
     </div>
   );

@@ -48,3 +48,7 @@ Thumbs.db
 
 # MCP configuration
 .mcp.json
+
+# Supabase CLI cache
+supabase/.temp/
+supabase/.branches/

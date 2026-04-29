@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { DraggableModal } from "@/components/DraggableModal";
 import {
-  Button, Input, Select, Modal, Form, Tag, Space,
+  Button, Input, Select, Form, Tag, Space,
   Popconfirm, message, Card, Row, Col, Descriptions,
   Upload, Alert, List,
 } from 'antd';
@@ -8,33 +9,47 @@ import { ResizableTable } from '@/components/ResizableTable';
 import {
   PlusOutlined, SearchOutlined, DownloadOutlined,
   EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined,
+  DollarOutlined,
 } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
 import type { ColumnsType } from 'antd/es/table';
-import type { Item, Category } from '@/types/database.types';
+import type { Item, Category, ItemPrice, Supplier } from '@/types/database.types';
 import { getAllItems, createItem, updateItem, deleteItem } from '@/services/items.service';
 import { createItemPrice } from '@/services/itemPrice.service';
 import { getOptionalLocationId } from '@/services/locationContext';
 import { supabase } from '@/lib/supabase';
+import {
+  downloadItemImportTemplate,
+  parseItemRow,
+} from '@/utils/excelTemplates';
+import { PriceManageModal } from '@/components/PriceManageModal';
 
 const { Option } = Select;
 
+// HTML <input type="number"> always returns strings via antd Form. Use z.coerce
+// so "100" → 100 automatically. Blank fields fall back via .default() / undefined.
+const numberFromString = z.preprocess(
+  (v) => (v === '' || v === null || v === undefined ? undefined : v),
+  z.coerce.number().min(0),
+);
+
 const itemFormSchema = z.object({
+  item_code: z.string().min(1),
   item_name: z.string().min(1),
   unit: z.string().min(1),
   korean_name: z.string().optional().default(''),
   vietnamese_name: z.string().optional().default(''),
   category_id: z.string().optional().default(''),
   spec: z.string().optional().default(''),
-  min_stock: z.number().min(0).optional().default(0),
-  max_stock: z.number().min(0).optional().default(0),
-  reorder_point: z.number().min(0).optional().default(0),
+  min_stock: numberFromString.optional().default(0),
+  max_stock: numberFromString.optional().default(0),
+  reorder_point: numberFromString.optional().default(0),
   storage_location: z.string().optional().default(''),
   status: z.string().optional().default('ACTIVE'),
   description: z.string().optional().default(''),
-  unit_price: z.number().min(0).optional(),
+  unit_price: numberFromString.optional(),
   currency: z.string().optional().default('VND'),
 });
 
@@ -54,7 +69,8 @@ const statusTag = (status: string, t: (k: string) => string) => {
 };
 
 const Items = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isVi = i18n.language?.startsWith('vi');
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
@@ -65,39 +81,93 @@ const Items = () => {
   const [editingItem, setEditingItem] = useState<Item | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<ItemFormValues>();
-  const [bulkPriceOpen, setBulkPriceOpen] = useState(false);
-  const [bulkPriceLoading, setBulkPriceLoading] = useState(false);
-  const [bulkPriceResult, setBulkPriceResult] = useState<{
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{
     total: number;
     success: number;
     failed: number;
     errors: string[];
   } | null>(null);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [currentPriceMap, setCurrentPriceMap] = useState<Map<string, ItemPrice>>(new Map());
+  const [priceManageOpen, setPriceManageOpen] = useState(false);
+  const [priceManageItem, setPriceManageItem] = useState<Item | null>(null);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [fetchedItems, { data: cats }] = await Promise.all([
+      const locationId = getOptionalLocationId();
+      let priceQuery = supabase.from('item_prices').select('*').eq('is_current', true);
+      if (locationId) priceQuery = priceQuery.eq('location_id', locationId);
+      const [fetchedItems, catsRes, pricesRes, supsRes] = await Promise.all([
         getAllItems(),
         supabase.from('categories').select('*').eq('is_active', true).order('sort_order'),
+        priceQuery,
+        supabase.from('suppliers').select('*'),
       ]);
       setItems(fetchedItems);
-      setCategories(cats ?? []);
-    } catch {
+      setCategories(catsRes.data ?? []);
+      setSuppliers((supsRes.data ?? []) as Supplier[]);
+      const pmap = new Map<string, ItemPrice>();
+      ((pricesRes.data ?? []) as ItemPrice[]).forEach((p) => pmap.set(p.item_id, p));
+      setCurrentPriceMap(pmap);
+    } catch (e) {
+      console.error('items fetchData failed:', e);
       message.error(t('common.error'));
     } finally {
       setLoading(false);
     }
   };
 
+  const refreshPriceMap = async () => {
+    const locationId = getOptionalLocationId();
+    let q = supabase.from('item_prices').select('*').eq('is_current', true);
+    if (locationId) q = q.eq('location_id', locationId);
+    const { data } = await q;
+    const pmap = new Map<string, ItemPrice>();
+    ((data ?? []) as ItemPrice[]).forEach((p) => pmap.set(p.item_id, p));
+    setCurrentPriceMap(pmap);
+  };
+
   useEffect(() => { fetchData(); }, []);
 
+  // Initialize / hydrate form fields whenever modal opens.
+  // Avoids the "useForm not connected to any Form element" warning that
+  // previously caused validateFields() to throw silently.
+  useEffect(() => {
+    if (!modalOpen) return;
+    if (editingItem) {
+      form.setFieldsValue({
+        item_code: editingItem.item_code,
+        item_name: editingItem.item_name,
+        korean_name: editingItem.korean_name,
+        vietnamese_name: editingItem.vietnamese_name,
+        category_id: editingItem.category_id,
+        spec: editingItem.spec,
+        unit: editingItem.unit,
+        min_stock: editingItem.min_stock,
+        max_stock: editingItem.max_stock,
+        reorder_point: editingItem.reorder_point,
+        storage_location: editingItem.storage_location,
+        status: editingItem.status,
+        description: editingItem.description,
+      });
+    } else {
+      form.resetFields();
+      form.setFieldsValue({ status: 'ACTIVE', currency: 'VND' });
+    }
+  }, [modalOpen, editingItem, form]);
+
   const filteredItems = useMemo(
-    () => items.filter((item) =>
-      searchQuery === '' ||
-      item.item_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.item_code.toLowerCase().includes(searchQuery.toLowerCase()),
-    ),
+    () => items.filter((item) => {
+      if (searchQuery === '') return true;
+      const q = searchQuery.toLowerCase();
+      return (
+        item.item_name.toLowerCase().includes(q) ||
+        item.item_code.toLowerCase().includes(q)
+      );
+    }),
     [items, searchQuery],
   );
 
@@ -108,42 +178,42 @@ const Items = () => {
     categories: new Set(items.map((i) => i.category_id).filter(Boolean)).size,
   }), [items]);
 
-  const getCategoryName = (id: string) =>
-    categories.find((c) => c.category_id === id)?.category_name ?? id;
+  const getCategoryName = (id: string) => {
+    const c = categories.find((x) => x.category_id === id);
+    if (!c) return id;
+    return isVi && c.category_name_vi ? c.category_name_vi : c.category_name;
+  };
 
   const openCreateModal = () => {
     setEditingItem(null);
-    form.resetFields();
-    form.setFieldsValue({ status: 'ACTIVE', currency: 'VND' });
     setModalOpen(true);
   };
 
   const openEditModal = (item: Item) => {
     setEditingItem(item);
-    form.setFieldsValue({
-      item_name: item.item_name, korean_name: item.korean_name,
-      vietnamese_name: item.vietnamese_name, category_id: item.category_id,
-      spec: item.spec, unit: item.unit, min_stock: item.min_stock,
-      max_stock: item.max_stock, reorder_point: item.reorder_point,
-      storage_location: item.storage_location, status: item.status,
-      description: item.description,
-    });
     setModalOpen(true);
   };
 
-  const handleModalCancel = () => { setModalOpen(false); setEditingItem(null); form.resetFields(); };
+  const handleModalCancel = () => { setModalOpen(false); setEditingItem(null); };
 
   const handleSubmit = async () => {
     let values: ItemFormValues;
-    try { values = itemFormSchema.parse(await form.validateFields()); } catch { return; }
+    try {
+      values = itemFormSchema.parse(await form.validateFields());
+    } catch (e) {
+      console.error('item form validation failed:', e);
+      return;
+    }
     setSubmitting(true);
     try {
+      // unit_price / currency belong on item_prices, not items.
+      const { unit_price, currency, ...itemFields } = values;
       if (editingItem) {
-        await updateItem(editingItem.item_id, values);
+        await updateItem(editingItem.item_id, itemFields);
         message.success(t('items.updateSuccess'));
       } else {
         const created = await createItem({
-          ...values, item_code: '',
+          ...itemFields,
           korean_name: values.korean_name ?? '',
           vietnamese_name: values.vietnamese_name ?? '',
           category_id: values.category_id ?? '',
@@ -154,15 +224,17 @@ const Items = () => {
           storage_location: values.storage_location ?? '',
           status: values.status ?? 'ACTIVE',
           description: values.description ?? '',
-          created_by: '', updated_by: '',
+          created_by: '',
+          updated_by: '',
         });
-        if (values.unit_price && values.unit_price > 0 && created) {
-          const locationId = getOptionalLocationId() || 'loc-1';
+        if (unit_price && unit_price > 0 && created) {
+          const locationId = getOptionalLocationId();
+          if (!locationId) throw new Error(t('errors.location.notSelected'));
           await createItemPrice({
             item_id: created.item_id,
             location_id: locationId,
-            unit_price: values.unit_price,
-            currency: values.currency ?? 'VND',
+            unit_price,
+            currency: currency ?? 'VND',
             supplier_id: null,
             effective_from: new Date().toISOString().slice(0, 10),
             effective_to: null,
@@ -174,7 +246,10 @@ const Items = () => {
       }
       handleModalCancel();
       fetchData();
-    } catch { message.error(t('common.error')); }
+    } catch (e) {
+      console.error('item submit failed:', e);
+      message.error(e instanceof Error ? e.message : t('common.error'));
+    }
     finally { setSubmitting(false); }
   };
 
@@ -209,32 +284,9 @@ const Items = () => {
     XLSX.writeFile(wb, 'MRO_items.xlsx');
   };
 
-  const handlePriceTemplate = () => {
-    const headers = [
-      { [t('items.itemCode')]: '', [t('items.itemName')]: '', [t('items.unitPrice')]: '', [t('items.currency')]: 'VND', [t('suppliers.supplierName')]: '', [t('items.effectiveFrom')]: '' },
-    ];
-    const ws = XLSX.utils.json_to_sheet(headers);
-    ws['!cols'] = [{ wch: 15 }, { wch: 25 }, { wch: 15 }, { wch: 10 }, { wch: 20 }, { wch: 15 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, t('items.priceTemplate'));
-    XLSX.writeFile(wb, `MRO_${t('items.priceTemplate')}.xlsx`);
-  };
-
-  const parseExcelDate = (raw: unknown): string | null => {
-    if (raw == null || raw === '') return null;
-    if (raw instanceof Date) {
-      if (isNaN(raw.getTime())) return null;
-      return raw.toISOString().slice(0, 10);
-    }
-    const s = String(raw).trim();
-    const d = new Date(s);
-    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
-    return null;
-  };
-
-  const handleBulkPriceUpload = async (file: File) => {
-    setBulkPriceLoading(true);
-    setBulkPriceResult(null);
+  const handleBulkUpload = async (file: File) => {
+    setBulkLoading(true);
+    setBulkResult(null);
     try {
       const buf = await file.arrayBuffer();
       const wb = XLSX.read(buf, { type: 'array', cellDates: true });
@@ -249,121 +301,141 @@ const Items = () => {
         const supplier = s as { supplier_id: string; supplier_name: string };
         supplierMap.set(supplier.supplier_name.trim(), supplier.supplier_id);
       });
-      const itemMap = new Map(items.map((i) => [i.item_code, i.item_id]));
-      const locationId = getOptionalLocationId() || 'loc-1';
-      const today = new Date().toISOString().slice(0, 10);
 
-      const codeCol = t('items.itemCode');
-      const priceCol = t('items.unitPrice');
-      const currencyCol = t('items.currency');
-      const supplierCol = t('suppliers.supplierName');
-      const effCol = t('items.effectiveFrom');
+      // Map by name (ko + vi) first, fallback to code for power users.
+      const categoryByName = new Map<string, string>();
+      const categoryByCode = new Map<string, string>();
+      categories.forEach((c) => {
+        if (c.category_name) categoryByName.set(c.category_name.trim().toLowerCase(), c.category_id);
+        if (c.category_name_vi) categoryByName.set(c.category_name_vi.trim().toLowerCase(), c.category_id);
+        if (c.category_code) categoryByCode.set(c.category_code.trim().toLowerCase(), c.category_id);
+      });
+
+      const itemMap = new Map(items.map((i) => [i.item_code, i.item_id]));
+      const locationId = getOptionalLocationId();
+      if (!locationId) throw new Error(t('errors.location.notSelected'));
+      const today = new Date().toISOString().slice(0, 10);
 
       const errors: string[] = [];
       let success = 0;
 
       for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
         const rowNum = i + 2;
-        const itemCode = String(row[codeCol] ?? '').trim();
-        if (!itemCode) {
-          errors.push(
-            t('items.bulkPriceErrorRow', {
-              row: rowNum,
-              msg: t('items.bulkPriceErrorItemCodeRequired'),
-            }),
-          );
+        const parsed = parseItemRow(rows[i]);
+        if (!parsed.ok) {
+          errors.push(t('items.bulkErrorRow', { row: rowNum, msg: parsed.error }));
           continue;
         }
-        const itemId = itemMap.get(itemCode);
-        if (!itemId) {
-          errors.push(
-            t('items.bulkPriceErrorRow', {
-              row: rowNum,
-              msg: t('items.bulkPriceErrorItemNotFound', { code: itemCode }),
-            }),
-          );
-          continue;
-        }
+        const r = parsed.data;
 
-        const priceNum = Number(row[priceCol]);
-        if (!Number.isFinite(priceNum) || priceNum <= 0) {
-          errors.push(
-            t('items.bulkPriceErrorRow', {
+        // Resolve category if provided — name preferred, code as fallback.
+        let categoryId = '';
+        if (r.categoryName) {
+          const lookup = r.categoryName.trim().toLowerCase();
+          const found = categoryByName.get(lookup) ?? categoryByCode.get(lookup);
+          if (!found) {
+            errors.push(t('items.bulkErrorRow', {
               row: rowNum,
-              msg: t('items.bulkPriceErrorInvalidPrice'),
-            }),
-          );
-          continue;
-        }
-
-        const rawEff = row[effCol];
-        let effFrom = today;
-        if (rawEff !== '' && rawEff != null) {
-          const parsed = parseExcelDate(rawEff);
-          if (!parsed) {
-            errors.push(
-              t('items.bulkPriceErrorRow', {
-                row: rowNum,
-                msg: t('items.bulkPriceErrorInvalidDate'),
-              }),
-            );
+              msg: t('items.bulkErrorCategoryNotFound', { name: r.categoryName }),
+            }));
             continue;
           }
-          effFrom = parsed;
+          categoryId = found;
         }
 
-        const currency = String(row[currencyCol] ?? 'VND').trim() || 'VND';
-        const supplierName = String(row[supplierCol] ?? '').trim();
+        // Resolve supplier if provided (only when adding price)
         let supplierId: string | null = null;
-        if (supplierName) {
-          const found = supplierMap.get(supplierName);
+        if (r.supplierName) {
+          const found = supplierMap.get(r.supplierName);
           if (!found) {
-            errors.push(
-              t('items.bulkPriceErrorRow', {
-                row: rowNum,
-                msg: t('items.bulkPriceErrorSupplierNotFound', { name: supplierName }),
-              }),
-            );
+            errors.push(t('items.bulkErrorRow', {
+              row: rowNum,
+              msg: t('items.bulkErrorSupplierNotFound', { name: r.supplierName }),
+            }));
             continue;
           }
           supplierId = found;
         }
 
         try {
-          await createItemPrice({
-            item_id: itemId,
-            location_id: locationId,
-            unit_price: priceNum,
-            currency,
-            supplier_id: supplierId,
-            effective_from: effFrom,
-            effective_to: null,
-            is_current: true,
-            created_by: '',
-          });
+          let itemId: string;
+          if (r.itemCode) {
+            // Update mode: existing item
+            const existing = itemMap.get(r.itemCode);
+            if (!existing) {
+              errors.push(t('items.bulkErrorRow', {
+                row: rowNum,
+                msg: t('items.bulkErrorItemNotFound', { code: r.itemCode }),
+              }));
+              continue;
+            }
+            itemId = existing;
+          } else {
+            // Create new item — categoryId is required (DB FK NOT NULL).
+            if (!categoryId) {
+              errors.push(t('items.bulkErrorRow', {
+                row: rowNum,
+                msg: t('items.bulkErrorCategoryRequired'),
+              }));
+              continue;
+            }
+            // Use user-supplied item_code.
+            const created = await createItem({
+              item_code: r.itemCode,
+              item_name: r.itemName,
+              korean_name: r.koreanName,
+              vietnamese_name: r.vietnameseName,
+              category_id: categoryId,
+              spec: r.spec,
+              unit: r.unit,
+              min_stock: r.minStock,
+              max_stock: r.maxStock,
+              reorder_point: r.reorderPoint,
+              storage_location: r.storageLocation,
+              status: 'ACTIVE',
+              description: r.description,
+              created_by: '',
+              updated_by: '',
+            });
+            itemId = created.item_id;
+            itemMap.set(created.item_code, created.item_id);
+          }
+
+          // If unit price provided, create item_price record
+          if (r.unitPrice !== null && r.unitPrice > 0) {
+            await createItemPrice({
+              item_id: itemId,
+              location_id: locationId,
+              unit_price: r.unitPrice,
+              currency: r.currency,
+              supplier_id: supplierId,
+              effective_from: r.effectiveFrom ?? today,
+              effective_to: null,
+              is_current: true,
+              created_by: '',
+            });
+          }
           success++;
         } catch (e) {
-          errors.push(
-            t('items.bulkPriceErrorRow', {
-              row: rowNum,
-              msg: e instanceof Error ? e.message : 'unknown',
-            }),
-          );
+          errors.push(t('items.bulkErrorRow', {
+            row: rowNum,
+            msg: e instanceof Error ? e.message : 'unknown',
+          }));
         }
       }
 
-      setBulkPriceResult({
+      setBulkResult({
         total: rows.length,
         success,
         failed: errors.length,
         errors,
       });
       if (success > 0) fetchData();
-    } catch {
-      message.error(t('items.bulkPriceParseFailed'));
+    } catch (e) {
+      console.error('bulk upload parse failed:', e);
+      message.error(t('items.bulkParseFailed'));
     } finally {
-      setBulkPriceLoading(false);
+      setBulkLoading(false);
     }
     return false;
   };
@@ -378,13 +450,35 @@ const Items = () => {
   }, [items]);
 
   const columns: ColumnsType<Item> = [
-    { title: t('items.itemCode'), dataIndex: 'item_code', key: 'item_code', width: 140, sorter: (a, b) => a.item_code.localeCompare(b.item_code) },
-    { title: t('items.itemName'), dataIndex: 'item_name', key: 'item_name', width: 180, sorter: (a, b) => a.item_name.localeCompare(b.item_name), ellipsis: true },
+    { title: t('items.itemCode'), dataIndex: 'item_code', key: 'item_code', width: 160, sorter: (a, b) => a.item_code.localeCompare(b.item_code) },
+    { title: t('items.itemName'), dataIndex: 'item_name', key: 'item_name', width: 200, sorter: (a, b) => a.item_name.localeCompare(b.item_name), ellipsis: true },
     { title: t('items.vietnameseName'), dataIndex: 'vietnamese_name', key: 'vietnamese_name', width: 160, ellipsis: true },
     { title: t('items.category'), dataIndex: 'category_id', key: 'category_id', width: 130, render: (id: string) => getCategoryName(id), filters: categoryFilters, onFilter: (value, record) => record.category_id === value },
     { title: t('items.unit'), dataIndex: 'unit', key: 'unit', width: 80, filters: unitFilters, onFilter: (value, record) => record.unit === value },
     { title: t('items.minStock'), dataIndex: 'min_stock', key: 'min_stock', width: 100, align: 'right', sorter: (a, b) => a.min_stock - b.min_stock },
-    { title: t('items.recentPrice'), key: 'recent_price', width: 110, render: () => <span style={{ color: '#aaa', fontStyle: 'italic' }}>{t('items.noPrice')}</span> },
+    {
+      title: t('items.recentPrice'),
+      key: 'recent_price',
+      width: 140,
+      align: 'right',
+      // Currency-aware sort: prices in different currencies are not directly
+      // comparable, so group by currency first and then by amount.
+      sorter: (a, b) => {
+        const pa = currentPriceMap.get(a.item_id);
+        const pb = currentPriceMap.get(b.item_id);
+        if (!pa && !pb) return 0;
+        if (!pa) return 1;
+        if (!pb) return -1;
+        if (pa.currency !== pb.currency) return pa.currency.localeCompare(pb.currency);
+        return pa.unit_price - pb.unit_price;
+      },
+      render: (_, record) => {
+        const p = currentPriceMap.get(record.item_id);
+        if (!p) return <span style={{ color: '#aaa', fontStyle: 'italic' }}>{t('items.noPrice')}</span>;
+        const symbol = p.currency === 'VND' ? '₫' : p.currency === 'KRW' ? '₩' : p.currency === 'USD' ? '$' : p.currency;
+        return `${p.unit_price.toLocaleString()} ${symbol}`;
+      },
+    },
     {
       title: t('common.status'), dataIndex: 'status', key: 'status', width: 90,
       filters: [{ text: t('items.statusNew'), value: 'ACTIVE' }, { text: t('items.statusOld'), value: 'INACTIVE' }, { text: t('items.discontinued'), value: 'DISCONTINUED' }],
@@ -392,11 +486,17 @@ const Items = () => {
       render: (status: string) => statusTag(status, t),
     },
     {
-      title: t('common.actions'), key: 'actions', width: 200, fixed: 'right',
+      title: t('common.actions'), key: 'actions', width: 240, fixed: 'right',
       render: (_, record) => (
         <Space size="small">
           <Button type="text" icon={<EyeOutlined />} onClick={() => { setDetailItem(record); setDetailOpen(true); }} />
           <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
+          <Button
+            type="text"
+            icon={<DollarOutlined />}
+            title={t('items.managePrice')}
+            onClick={() => { setPriceManageItem(record); setPriceManageOpen(true); }}
+          />
           <Popconfirm
             title={record.status === 'ACTIVE' ? t('items.deactivateConfirm') : t('items.activateConfirm')}
             okText={t('common.confirm')} cancelText={t('common.cancel')}
@@ -419,8 +519,8 @@ const Items = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h2 style={{ margin: 0 }}>{t('items.title')}</h2>
         <Space>
-          <Button icon={<DownloadOutlined />} onClick={handlePriceTemplate}>{t('items.priceTemplate')}</Button>
-          <Button icon={<UploadOutlined />} onClick={() => { setBulkPriceResult(null); setBulkPriceOpen(true); }}>{t('items.bulkPriceUpload')}</Button>
+          <Button icon={<DownloadOutlined />} onClick={downloadItemImportTemplate}>{t('items.itemTemplate')}</Button>
+          <Button icon={<UploadOutlined />} onClick={() => { setBulkResult(null); setBulkOpen(true); }}>{t('items.bulkUpload')}</Button>
           <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>{t('items.addItem')}</Button>
         </Space>
       </div>
@@ -441,10 +541,18 @@ const Items = () => {
           pagination={{ pageSize: 20, showSizeChanger: false, showTotal: (total) => t('common.total', { count: total }) }} />
       </Card>
 
-      <Modal title={editingItem ? t('items.editItem') : t('items.createItem')} open={modalOpen}
+      <DraggableModal title={editingItem ? t('items.editItem') : t('items.createItem')} open={modalOpen}
         onOk={handleSubmit} onCancel={handleModalCancel} okText={t('common.save')}
-        cancelText={t('common.cancel')} confirmLoading={submitting} width={600} destroyOnClose>
-        <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
+        cancelText={t('common.cancel')} confirmLoading={submitting} width={600} destroyOnHidden>
+        <Form form={form} layout="vertical" style={{ marginTop: 8 }} preserve={false}>
+          <Form.Item
+            name="item_code"
+            label={t('items.itemCode')}
+            rules={[{ required: true, message: t('items.itemCodeRequired') }]}
+            extra={editingItem ? undefined : 'UNIQUE'}
+          >
+            <Input disabled={!!editingItem} placeholder="AT-0001" />
+          </Form.Item>
           <Form.Item name="item_name" label={t('items.itemName')} rules={[{ required: true, message: t('items.itemNameRequired') }]}>
             <Input />
           </Form.Item>
@@ -484,11 +592,11 @@ const Items = () => {
           </Form.Item>
           <Form.Item name="description" label={t('items.description')}><Input.TextArea rows={3} /></Form.Item>
         </Form>
-      </Modal>
+      </DraggableModal>
 
-      <Modal title={t('items.detail')} open={detailOpen} onCancel={() => setDetailOpen(false)}
+      <DraggableModal title={t('items.detail')} open={detailOpen} onCancel={() => setDetailOpen(false)}
         footer={<Button onClick={() => setDetailOpen(false)}>{t('common.cancel')}</Button>}
-        width={680} destroyOnClose>
+        width={680} destroyOnHidden>
         {detailItem && (
           <Descriptions column={2} bordered size="small" style={{ marginTop: 8 }}>
             <Descriptions.Item label={t('items.itemCode')}>{detailItem.item_code}</Descriptions.Item>
@@ -508,54 +616,54 @@ const Items = () => {
             <Descriptions.Item label={t('common.updatedAt')}>{detailItem.updated_at}</Descriptions.Item>
           </Descriptions>
         )}
-      </Modal>
+      </DraggableModal>
 
-      <Modal
-        title={t('items.bulkPriceDialogTitle')}
-        open={bulkPriceOpen}
-        onCancel={() => setBulkPriceOpen(false)}
-        footer={<Button onClick={() => setBulkPriceOpen(false)}>{t('common.cancel')}</Button>}
+      <DraggableModal
+        title={t('items.bulkDialogTitle')}
+        open={bulkOpen}
+        onCancel={() => setBulkOpen(false)}
+        footer={<Button onClick={() => setBulkOpen(false)}>{t('common.cancel')}</Button>}
         width={680}
-        destroyOnClose
+        destroyOnHidden
       >
         <Space direction="vertical" style={{ width: '100%' }} size="middle">
-          <Alert type="info" showIcon message={t('items.bulkPriceHelp')} />
+          <Alert type="info" showIcon message={t('items.bulkHelp')} />
 
           <Upload.Dragger
             multiple={false}
             accept=".xlsx,.xls"
             showUploadList={false}
-            disabled={bulkPriceLoading}
+            disabled={bulkLoading}
             beforeUpload={(file) => {
-              handleBulkPriceUpload(file);
+              handleBulkUpload(file);
               return false;
             }}
           >
             <p className="ant-upload-drag-icon">
               <UploadOutlined />
             </p>
-            <p className="ant-upload-text">{t('items.bulkPriceDropHint')}</p>
+            <p className="ant-upload-text">{t('items.bulkDropHint')}</p>
           </Upload.Dragger>
 
-          {bulkPriceLoading && <Alert type="warning" message={t('items.bulkPriceProcessing')} />}
+          {bulkLoading && <Alert type="warning" message={t('items.bulkProcessing')} />}
 
-          {bulkPriceResult && (
+          {bulkResult && (
             <>
               <Alert
-                type={bulkPriceResult.failed === 0 ? 'success' : 'warning'}
+                type={bulkResult.failed === 0 ? 'success' : 'warning'}
                 showIcon
-                message={t('items.bulkPriceResultTitle')}
-                description={t('items.bulkPriceSummary', {
-                  total: bulkPriceResult.total,
-                  success: bulkPriceResult.success,
-                  failed: bulkPriceResult.failed,
+                message={t('items.bulkResultTitle')}
+                description={t('items.bulkSummary', {
+                  total: bulkResult.total,
+                  success: bulkResult.success,
+                  failed: bulkResult.failed,
                 })}
               />
-              {bulkPriceResult.errors.length > 0 && (
+              {bulkResult.errors.length > 0 && (
                 <List
                   size="small"
                   bordered
-                  dataSource={bulkPriceResult.errors}
+                  dataSource={bulkResult.errors}
                   style={{ maxHeight: 240, overflowY: 'auto' }}
                   renderItem={(item) => (
                     <List.Item style={{ color: '#ff4d4f' }}>{item}</List.Item>
@@ -565,7 +673,16 @@ const Items = () => {
             </>
           )}
         </Space>
-      </Modal>
+      </DraggableModal>
+
+      <PriceManageModal
+        open={priceManageOpen}
+        item={priceManageItem}
+        suppliers={suppliers}
+        locationId={getOptionalLocationId() ?? ''}
+        onClose={() => { setPriceManageOpen(false); setPriceManageItem(null); }}
+        onChange={refreshPriceMap}
+      />
     </div>
   );
 };

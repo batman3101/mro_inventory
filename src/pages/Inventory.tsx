@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { DraggableModal } from "@/components/DraggableModal";
 import {
   Input,
   Card,
@@ -56,15 +57,25 @@ const Inventory = () => {
     return { totalItems, totalQuantity, lowStockCount, locationCount: locations.size || 1 };
   }, [inventoryItems]);
 
+  useEffect(() => {
+    if (!editModal || !editingItem) return;
+    form.setFieldsValue({ current_quantity: editingItem.current_quantity });
+  }, [editModal, editingItem, form]);
+
   const openEditModal = (record: InventoryWithItem) => {
     setEditingItem(record);
-    form.setFieldsValue({ current_quantity: record.current_quantity });
     setEditModal(true);
   };
 
   const handleEditSubmit = async () => {
-    const values = await form.validateFields();
     if (!editingItem) return;
+    let values: { current_quantity: number };
+    try {
+      values = await form.validateFields();
+    } catch (e) {
+      console.error('inventory form validation failed:', e);
+      return;
+    }
     try {
       const { updateQuantity } = useInventoryStore.getState();
       await updateQuantity(editingItem.inventory_id, values.current_quantity, 'admin');
@@ -72,8 +83,9 @@ const Inventory = () => {
       setEditModal(false);
       setEditingItem(null);
       fetchInventory();
-    } catch {
-      message.error(t('inventory.processFailed'));
+    } catch (e) {
+      console.error('inventory update failed:', e);
+      message.error(e instanceof Error ? e.message : t('inventory.processFailed'));
     }
   };
 
@@ -284,21 +296,21 @@ const Inventory = () => {
       </Card>
 
       {/* Edit Modal */}
-      <Modal
+      <DraggableModal
         title={t('inventory.editQuantity')}
         open={editModal}
         onOk={handleEditSubmit}
         onCancel={() => { setEditModal(false); setEditingItem(null); }}
         okText={t('common.save')}
         cancelText={t('common.cancel')}
-        destroyOnClose
+        destroyOnHidden
       >
         {editingItem && (
           <div style={{ marginBottom: 16 }}>
             <strong>{editingItem.item_code}</strong> — {editingItem.item_name}
           </div>
         )}
-        <Form form={form} layout="vertical">
+        <Form form={form} layout="vertical" preserve={false}>
           <Form.Item
             name="current_quantity"
             label={t('inventory.currentQuantity')}
@@ -307,7 +319,7 @@ const Inventory = () => {
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
-      </Modal>
+      </DraggableModal>
 
       {/* Row highlight style */}
       <style>{`

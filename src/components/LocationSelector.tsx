@@ -2,24 +2,25 @@ import { Button, Space, Typography } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { useLocationStore } from '@/store/location.store';
 
-const DEFAULT_LOCATIONS = [
-  { location_id: 'loc-1', location_code: 'ALT', location_name: 'ALT' },
-  { location_id: 'loc-2', location_code: 'ALV', location_name: 'ALV' },
-];
-
 const LocationSelector = () => {
   const { t } = useTranslation();
   const { currentLocationCode, locations, setCurrentLocation } = useLocationStore();
 
-  const displayLocations = locations.length > 0 ? locations : DEFAULT_LOCATIONS;
+  if (locations.length === 0) {
+    return (
+      <Typography.Text style={{ color: '#9ca3af', fontSize: 12 }}>
+        {t('common.loading')}
+      </Typography.Text>
+    );
+  }
 
   return (
-    <div>
-      <Typography.Text style={{ color: '#9ca3af', fontSize: 12, marginBottom: 6, display: 'block' }}>
+    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+      <Typography.Text style={{ color: '#9ca3af', fontSize: 12 }}>
         {t('components.factorySelect')}
       </Typography.Text>
       <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-        {displayLocations.map((loc) => (
+        {locations.map((loc) => (
           <Button
             key={loc.location_id}
             type={currentLocationCode === loc.location_code ? 'primary' : 'default'}
@@ -37,7 +38,7 @@ const LocationSelector = () => {
           </Button>
         ))}
       </div>
-    </div>
+    </Space>
   );
 };
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
+import { DraggableModal } from "@/components/DraggableModal";
 import {
-  Button, Select, Modal, Form, Space, Popconfirm, message,
+  Button, Select, Form, Space, Popconfirm, message,
   Card, Col, Row, Statistic, Input, InputNumber, DatePicker,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
@@ -72,33 +73,45 @@ const InboundPage = () => {
   const handleValuesChange = (_: Partial<InboundFormValues>, all: InboundFormValues) =>
     setCalcTotal((all.quantity ?? 0) * (all.unit_price ?? 0));
 
+  useEffect(() => {
+    if (!modalOpen) return;
+    if (editingRecord) {
+      form.setFieldsValue({
+        item_id: editingRecord.item_id, supplier_id: editingRecord.supplier_id,
+        quantity: editingRecord.quantity, unit_price: editingRecord.unit_price,
+        currency: editingRecord.currency, notes: editingRecord.notes,
+        inbound_date: dayjs(editingRecord.inbound_date),
+      });
+      setCalcTotal(editingRecord.total_price ?? 0);
+    } else {
+      form.resetFields();
+      form.setFieldsValue({ currency: 'VND', inbound_date: dayjs() });
+      setCalcTotal(0);
+    }
+  }, [modalOpen, editingRecord, form]);
+
   const openCreateModal = () => {
     setEditingRecord(null);
-    form.resetFields();
-    form.setFieldsValue({ currency: 'VND', inbound_date: dayjs() });
-    setCalcTotal(0);
     setModalOpen(true);
   };
 
   const openEditModal = (record: Inbound) => {
     setEditingRecord(record);
-    form.setFieldsValue({
-      item_id: record.item_id, supplier_id: record.supplier_id,
-      quantity: record.quantity, unit_price: record.unit_price,
-      currency: record.currency, notes: record.notes,
-      inbound_date: dayjs(record.inbound_date),
-    });
-    setCalcTotal(record.total_price ?? 0);
     setModalOpen(true);
   };
 
   const handleModalCancel = () => {
-    setModalOpen(false); setEditingRecord(null); form.resetFields(); setCalcTotal(0);
+    setModalOpen(false); setEditingRecord(null); setCalcTotal(0);
   };
 
   const handleSubmit = async () => {
     let values: InboundFormValues;
-    try { values = await form.validateFields(); } catch { return; }
+    try {
+      values = await form.validateFields();
+    } catch (e) {
+      console.error('inbound form validation failed:', e);
+      return;
+    }
     if (!currentLocationId) { message.error(t('inbound.locationRequired')); return; }
     setSubmitting(true);
     try {
@@ -116,8 +129,9 @@ const InboundPage = () => {
         message.success(t('inbound.createSuccess'));
       }
       handleModalCancel();
-    } catch {
-      message.error(t('inbound.createFailed'));
+    } catch (e) {
+      console.error('inbound submit failed:', e);
+      message.error(e instanceof Error ? e.message : t('inbound.createFailed'));
     } finally {
       setSubmitting(false);
     }
@@ -125,7 +139,10 @@ const InboundPage = () => {
 
   const handleDelete = async (id: string) => {
     try { await deleteInbound(id); message.success(t('inbound.deleteSuccess')); }
-    catch { message.error(t('inbound.deleteFailed')); }
+    catch (e) {
+      console.error('inbound delete failed:', e);
+      message.error(e instanceof Error ? e.message : t('inbound.deleteFailed'));
+    }
   };
 
   const handleDateRangeChange: RangePickerProps['onChange'] = (dates) =>
@@ -223,13 +240,13 @@ const InboundPage = () => {
         />
       </Card>
 
-      <Modal
+      <DraggableModal
         title={editingRecord ? t('inbound.editInbound') : t('inbound.createInbound')}
         open={modalOpen} onOk={handleSubmit} onCancel={handleModalCancel}
         okText={t('common.save')} cancelText={t('common.cancel')}
-        confirmLoading={submitting} width={560} destroyOnClose
+        confirmLoading={submitting} width={560} destroyOnHidden
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 8 }} onValuesChange={handleValuesChange}>
+        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }} onValuesChange={handleValuesChange}>
           {!editingRecord && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>{t('inbound.referenceNumber')}</div>
@@ -268,7 +285,7 @@ const InboundPage = () => {
             <Input.TextArea rows={3} placeholder={t('inbound.notesPlaceholder')} />
           </Form.Item>
         </Form>
-      </Modal>
+      </DraggableModal>
     </div>
   );
 };

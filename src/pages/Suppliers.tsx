@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button,
   Input,
@@ -62,39 +63,48 @@ const Suppliers = () => {
     return matchesSearch && matchesStatus;
   });
 
+  // Hydrate form fields when modal opens; avoids "useForm not connected" warning
+  // and the silent validateFields() failure that caused saves to drop.
+  useEffect(() => {
+    if (!modalOpen) return;
+    if (editingSupplier) {
+      form.setFieldsValue({
+        supplier_name: editingSupplier.supplier_name,
+        contact_person: editingSupplier.contact_person,
+        email: editingSupplier.email,
+        phone: editingSupplier.phone,
+        address: editingSupplier.address,
+        country: editingSupplier.country,
+        website: editingSupplier.website,
+        status: editingSupplier.status,
+      });
+    } else {
+      form.resetFields();
+      form.setFieldsValue({ status: 'ACTIVE' });
+    }
+  }, [modalOpen, editingSupplier, form]);
+
   const openCreateModal = () => {
     setEditingSupplier(null);
-    form.resetFields();
-    form.setFieldsValue({ status: 'ACTIVE' });
     setModalOpen(true);
   };
 
   const openEditModal = (supplier: Supplier) => {
     setEditingSupplier(supplier);
-    form.setFieldsValue({
-      supplier_name: supplier.supplier_name,
-      contact_person: supplier.contact_person,
-      email: supplier.email,
-      phone: supplier.phone,
-      address: supplier.address,
-      country: supplier.country,
-      website: supplier.website,
-      status: supplier.status,
-    });
     setModalOpen(true);
   };
 
   const handleModalCancel = () => {
     setModalOpen(false);
     setEditingSupplier(null);
-    form.resetFields();
   };
 
   const handleSubmit = async () => {
     let values: SupplierFormValues;
     try {
       values = await form.validateFields();
-    } catch {
+    } catch (e) {
+      console.error('supplier form validation failed:', e);
       return;
     }
 
@@ -120,8 +130,9 @@ const Suppliers = () => {
         message.success(t('suppliers.createSuccess'));
       }
       handleModalCancel();
-    } catch {
-      message.error(t('common.error'));
+    } catch (e) {
+      console.error('supplier submit failed:', e);
+      message.error(e instanceof Error ? e.message : t('common.error'));
     } finally {
       setSubmitting(false);
     }
@@ -131,8 +142,9 @@ const Suppliers = () => {
     try {
       await deleteSupplier(supplierId);
       message.success(t('suppliers.deleteSuccess'));
-    } catch {
-      message.error(t('common.error'));
+    } catch (e) {
+      console.error('supplier delete failed:', e);
+      message.error(e instanceof Error ? e.message : t('common.error'));
     }
   };
 
@@ -256,7 +268,7 @@ const Suppliers = () => {
         />
       </Card>
 
-      <Modal
+      <DraggableModal
         title={editingSupplier ? t('suppliers.editSupplier') : t('suppliers.createSupplier')}
         open={modalOpen}
         onOk={handleSubmit}
@@ -265,9 +277,9 @@ const Suppliers = () => {
         cancelText={t('common.cancel')}
         confirmLoading={submitting}
         width={600}
-        destroyOnClose
+        destroyOnHidden
       >
-        <Form form={form} layout="vertical" style={{ marginTop: 8 }}>
+        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
           <Form.Item
             name="supplier_name"
             label={t('suppliers.supplierName')}
@@ -300,7 +312,7 @@ const Suppliers = () => {
             </Select>
           </Form.Item>
         </Form>
-      </Modal>
+      </DraggableModal>
     </div>
   );
 };

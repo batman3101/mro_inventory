@@ -32,42 +32,14 @@ export async function getItemById(itemId: string): Promise<Item | null> {
   return data;
 }
 
-export async function generateItemCode(): Promise<string> {
-  const now = new Date();
-  const year = now.getFullYear();
-  const month = String(now.getMonth() + 1).padStart(2, '0');
-  const monthPrefix = `MRO-${year}${month}-`;
-
-  const { data, error } = await supabase
-    .from('items')
-    .select('item_code')
-    .like('item_code', `${monthPrefix}%`)
-    .order('item_code', { ascending: false })
-    .limit(1);
-
-  if (error) {
-    throw new Error(i18n.t('errors.items.generateCodeFailed', { message: error.message }));
-  }
-
-  if (!data || data.length === 0) {
-    return `${monthPrefix}001`;
-  }
-
-  const lastCode = data[0].item_code;
-  const lastSequence = parseInt(lastCode.slice(-3), 10);
-  const nextSequence = String(lastSequence + 1).padStart(3, '0');
-
-  return `${monthPrefix}${nextSequence}`;
-}
-
 export async function createItem(
   data: Omit<Item, 'item_id' | 'created_at' | 'updated_at'>
 ): Promise<Item> {
-  const itemCode = await generateItemCode();
-
+  // item_code is user-supplied (사내코드). UNIQUE constraint on the column
+  // enforces no duplicates at the DB level.
   const { data: created, error } = await supabase
     .from('items')
-    .insert({ ...data, item_code: itemCode })
+    .insert(data)
     .select()
     .single();
 
@@ -97,11 +69,34 @@ export async function updateItem(
 }
 
 export async function deleteItem(itemId: string): Promise<void> {
-  const { error } = await supabase
-    .from('items')
-    .delete()
-    .eq('item_id', itemId);
+  // FK refs in: item_prices, inventory, reorder_alerts, inbound, outbound.
+  // Inbound/outbound rows are accounting history — refuse delete in that case
+  // and tell the user to deactivate (status=DISCONTINUED) instead.
+  const [inboundRes, outboundRes] = await Promise.all([
+    supabase.from('inbound').select('inbound_id', { count: 'exact', head: true }).eq('item_id', itemId),
+    supabase.from('outbound').select('outbound_id', { count: 'exact', head: true }).eq('item_id', itemId),
+  ]);
 
+  const inboundCount = inboundRes.count ?? 0;
+  const outboundCount = outboundRes.count ?? 0;
+  if (inboundCount > 0 || outboundCount > 0) {
+    throw new Error(
+      i18n.t('errors.items.deleteHasHistory', { inbound: inboundCount, outbound: outboundCount }),
+    );
+  }
+
+  // Safe to remove: clear dependent rows first, then the item itself.
+  // Errors here surface up; partial failure leaves the item intact for retry.
+  const { error: priceErr } = await supabase.from('item_prices').delete().eq('item_id', itemId);
+  if (priceErr) throw new Error(i18n.t('errors.items.deleteFailed', { message: priceErr.message }));
+
+  const { error: invErr } = await supabase.from('inventory').delete().eq('item_id', itemId);
+  if (invErr) throw new Error(i18n.t('errors.items.deleteFailed', { message: invErr.message }));
+
+  const { error: alertErr } = await supabase.from('reorder_alerts').delete().eq('item_id', itemId);
+  if (alertErr) throw new Error(i18n.t('errors.items.deleteFailed', { message: alertErr.message }));
+
+  const { error } = await supabase.from('items').delete().eq('item_id', itemId);
   if (error) {
     throw new Error(i18n.t('errors.items.deleteFailed', { message: error.message }));
   }

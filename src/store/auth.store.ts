@@ -45,7 +45,9 @@ export const useAuthStore = create<AuthState>()(
             updated_at: new Date().toISOString(),
           };
           set({ user: devUser, isAuthenticated: true, isLoading: false, error: null });
-          useLocationStore.getState().setCurrentLocation('loc-1', 'ALT');
+          // currentLocationId is hydrated by MainLayout's bootstrap effect from
+          // the real locations table. Do NOT seed a placeholder UUID here —
+          // 'loc-1' was a stale dev fixture and breaks UUID-typed FK lookups.
           return true;
         }
 

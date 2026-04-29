@@ -73,12 +73,12 @@ export async function generateReferenceNumber(): Promise<string> {
   }
 
   if (!data || data.length === 0) {
-    return `${prefix}001`;
+    return `${prefix}01`;
   }
 
-  const lastRef = data[0].reference_number;
-  const lastSeq = parseInt(lastRef.slice(-3), 10);
-  const nextSeq = String(lastSeq + 1).padStart(3, '0');
+  const lastRef = data[0].reference_number as string;
+  const lastSeq = parseInt(lastRef.split('-').pop() ?? '0', 10);
+  const nextSeq = String(lastSeq + 1).padStart(2, '0');
 
   return `${prefix}${nextSeq}`;
 }

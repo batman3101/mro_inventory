@@ -71,12 +71,14 @@ export async function generateReferenceNumber(): Promise<string> {
   }
 
   if (!data || data.length === 0) {
-    return `${prefix}001`;
+    return `${prefix}01`;
   }
 
-  const lastNumber = data[0].reference_number;
-  const lastSeq = parseInt(lastNumber.slice(-3), 10);
-  const nextSeq = String(lastSeq + 1).padStart(3, '0');
+  // Reference is `IN-YYYYMMDD-NN` so the trailing seq lives after the last `-`.
+  // Reading after the last hyphen lets the seq grow past 99 if a busy day rolls over.
+  const lastNumber = data[0].reference_number as string;
+  const lastSeq = parseInt(lastNumber.split('-').pop() ?? '0', 10);
+  const nextSeq = String(lastSeq + 1).padStart(2, '0');
 
   return `${prefix}${nextSeq}`;
 }

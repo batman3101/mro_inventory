@@ -157,38 +157,36 @@ const Dashboard = () => {
   };
 
   const fetchRecentRecords = async () => {
+    // item_code/item_name/item_unit are NOT real columns on inbound/outbound —
+    // they live on items and must be joined via the item_id FK.
+    type RecentRow = {
+      quantity: number | null;
+      created_at: string | null;
+      items: { item_code: string; item_name: string; unit: string } | null;
+    };
     const [{ data: inbound }, { data: outbound }] = await Promise.all([
       supabase
         .from('inbound')
-        .select('item_code, item_name, quantity, item_unit, created_at')
+        .select('quantity, created_at, items(item_code, item_name, unit)')
         .order('created_at', { ascending: false })
         .limit(5),
       supabase
         .from('outbound')
-        .select('item_code, item_name, quantity, item_unit, created_at')
+        .select('quantity, created_at, items(item_code, item_name, unit)')
         .order('created_at', { ascending: false })
         .limit(5),
     ]);
 
-    setRecentInbound(
-      (inbound ?? []).map((r) => ({
-        item_code: r.item_code ?? '',
-        item_name: r.item_name ?? '',
-        quantity: r.quantity ?? 0,
-        item_unit: r.item_unit ?? 'EA',
-        created_at: r.created_at ?? '',
-      }))
-    );
+    const project = (rows: unknown) => ((rows ?? []) as RecentRow[]).map((r) => ({
+      item_code: r.items?.item_code ?? '',
+      item_name: r.items?.item_name ?? '',
+      quantity: r.quantity ?? 0,
+      item_unit: r.items?.unit ?? 'EA',
+      created_at: r.created_at ?? '',
+    }));
 
-    setRecentOutbound(
-      (outbound ?? []).map((r) => ({
-        item_code: r.item_code ?? '',
-        item_name: r.item_name ?? '',
-        quantity: r.quantity ?? 0,
-        item_unit: r.item_unit ?? 'EA',
-        created_at: r.created_at ?? '',
-      }))
-    );
+    setRecentInbound(project(inbound));
+    setRecentOutbound(project(outbound));
   };
 
   useEffect(() => {
