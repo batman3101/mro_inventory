@@ -13,12 +13,19 @@ import {
   Card,
   Breadcrumb,
 } from 'antd';
+import { Upload, Alert, List } from 'antd';
+import * as XLSX from 'xlsx';
 import { ResizableTable } from '@/components/ResizableTable';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined } from '@ant-design/icons';
+import {
+  PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
+  DownloadOutlined, UploadOutlined,
+} from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
 import type { Supplier } from '@/types/database.types';
 import { useSupplierStore } from '@/store/suppliers.store';
+import { downloadSupplierImportTemplate, parseSupplierRow } from '@/utils/excelTemplates';
+import { getOptionalLocationId } from '@/services/locationContext';
 
 const { Option } = Select;
 
@@ -49,6 +56,72 @@ const Suppliers = () => {
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [form] = Form.useForm<SupplierFormValues>();
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{
+    total: number; success: number; failed: number; errors: string[];
+  } | null>(null);
+
+  const handleBulkUpload = async (file: File) => {
+    setBulkLoading(true);
+    setBulkResult(null);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
+      const existing = new Set(suppliers.map((s) => s.supplier_code));
+      const locationId = getOptionalLocationId() ?? '';
+      const errors: string[] = [];
+      let success = 0;
+      for (let i = 0; i < rows.length; i++) {
+        const rowNum = i + 2;
+        const parsed = parseSupplierRow(rows[i]);
+        if (!parsed.ok) {
+          errors.push(t('suppliers.bulkErrorRow', { row: rowNum, msg: parsed.error }));
+          continue;
+        }
+        const r = parsed.data;
+        if (existing.has(r.supplierCode)) {
+          errors.push(t('suppliers.bulkErrorRow', {
+            row: rowNum,
+            msg: `${r.supplierCode} (duplicate)`,
+          }));
+          continue;
+        }
+        try {
+          await createSupplier({
+            supplier_code: r.supplierCode,
+            supplier_name: r.supplierName,
+            contact_person: r.contactPerson,
+            email: r.email,
+            phone: r.phone,
+            address: r.address,
+            country: r.country,
+            website: r.website,
+            status: 'ACTIVE',
+            location_id: locationId,
+            created_by: '',
+          });
+          existing.add(r.supplierCode);
+          success++;
+        } catch (e) {
+          errors.push(t('suppliers.bulkErrorRow', {
+            row: rowNum,
+            msg: e instanceof Error ? e.message : 'unknown',
+          }));
+        }
+      }
+      setBulkResult({ total: rows.length, success, failed: errors.length, errors });
+      if (success > 0) fetchSuppliers();
+    } catch (e) {
+      console.error('supplier bulk parse failed:', e);
+      message.error(t('suppliers.bulkParseFailed'));
+    } finally {
+      setBulkLoading(false);
+    }
+    return false;
+  };
 
   useEffect(() => {
     fetchSuppliers();
@@ -251,11 +324,20 @@ const Suppliers = () => {
             <Option value="ACTIVE">{t('common.active')}</Option>
             <Option value="INACTIVE">{t('common.inactive')}</Option>
           </Select>
-          <div style={{ marginLeft: 'auto' }}>
+          <Space style={{ marginLeft: 'auto' }}>
+            <Button icon={<DownloadOutlined />} onClick={downloadSupplierImportTemplate}>
+              {t('suppliers.supplierTemplate')}
+            </Button>
+            <Button
+              icon={<UploadOutlined />}
+              onClick={() => { setBulkResult(null); setBulkOpen(true); }}
+            >
+              {t('suppliers.bulkUpload')}
+            </Button>
             <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
               {t('common.create')}
             </Button>
-          </div>
+          </Space>
         </div>
 
         <ResizableTable<Supplier>
@@ -312,6 +394,55 @@ const Suppliers = () => {
             </Select>
           </Form.Item>
         </Form>
+      </DraggableModal>
+    </div>
+      <DraggableModal
+        title={t('suppliers.bulkDialogTitle')}
+        open={bulkOpen}
+        onCancel={() => setBulkOpen(false)}
+        footer={<Button onClick={() => setBulkOpen(false)}>{t('common.cancel')}</Button>}
+        width={680}
+        destroyOnHidden
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Alert type="info" showIcon message={t('suppliers.bulkHelp')} />
+          <Upload.Dragger
+            multiple={false}
+            accept=".xlsx,.xls"
+            showUploadList={false}
+            disabled={bulkLoading}
+            beforeUpload={(file) => { handleBulkUpload(file); return false; }}
+          >
+            <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+            <p className="ant-upload-text">{t('suppliers.bulkDropHint')}</p>
+          </Upload.Dragger>
+          {bulkLoading && <Alert type="warning" message={t('suppliers.bulkProcessing')} />}
+          {bulkResult && (
+            <>
+              <Alert
+                type={bulkResult.failed === 0 ? 'success' : 'warning'}
+                showIcon
+                message={t('suppliers.bulkResultTitle')}
+                description={t('suppliers.bulkSummary', {
+                  total: bulkResult.total,
+                  success: bulkResult.success,
+                  failed: bulkResult.failed,
+                })}
+              />
+              {bulkResult.errors.length > 0 && (
+                <List
+                  size="small"
+                  bordered
+                  dataSource={bulkResult.errors}
+                  style={{ maxHeight: 240, overflowY: 'auto' }}
+                  renderItem={(item) => (
+                    <List.Item style={{ color: '#ff4d4f' }}>{item}</List.Item>
+                  )}
+                />
+              )}
+            </>
+          )}
+        </Space>
       </DraggableModal>
     </div>
   );

@@ -138,6 +138,9 @@
     "bulkErrorCategoryRequired": "신규 등록 시 카테고리는 필수입니다",
     "bulkErrorCategoryNotFound": "카테고리 '{{name}}'를 찾을 수 없습니다",
     "bulkErrorSupplierNotFound": "공급업체 '{{name}}'를 찾을 수 없습니다",
+    "bulkWarnSupplierNotFound": "공급업체 '{{name}}' 미매칭 — 공급업체 정보 없이 등록됨",
+    "bulkErrorsHeader": "오류 (등록 실패한 행)",
+    "bulkWarningsHeader": "경고 (등록은 됐지만 확인 필요)",
     "bulkErrorInvalidPrice": "단가가 유효하지 않습니다",
     "bulkErrorInvalidDate": "적용시작일이 유효하지 않습니다",
     "bulkParseFailed": "파일을 읽을 수 없습니다. 템플릿 형식을 확인하세요.",
@@ -267,7 +270,19 @@
     "createSuccess": "공급업체가 등록되었습니다.",
     "updateSuccess": "공급업체가 수정되었습니다.",
     "deleteSuccess": "공급업체가 삭제되었습니다.",
-    "supplierNameRequired": "공급업체명을 입력하세요"
+    "supplierNameRequired": "공급업체명을 입력하세요",
+    "supplierTemplate": "공급업체 템플릿",
+    "bulkUpload": "공급업체 일괄등록",
+    "bulkDialogTitle": "공급업체 일괄 업로드",
+    "bulkHelp": "템플릿대로 작성한 Excel을 업로드하세요. 공급업체코드와 공급업체명은 필수입니다. 같은 공급업체코드는 거부됩니다.",
+    "bulkDropHint": "클릭하거나 Excel 파일을 이곳에 드래그",
+    "bulkProcessing": "처리 중...",
+    "bulkResultTitle": "일괄 등록 결과",
+    "bulkSummary": "총 {{total}}건 중 성공 {{success}}건, 실패 {{failed}}건",
+    "bulkErrorRow": "{{row}}행: {{msg}}",
+    "bulkErrorCodeRequired": "공급업체코드가 비어있습니다",
+    "bulkErrorNameRequired": "공급업체명이 비어있습니다",
+    "bulkParseFailed": "파일을 읽을 수 없습니다. 템플릿 형식을 확인하세요."
   },
   "categories": {
     "title": "카테고리 관리",
@@ -452,6 +467,20 @@
   },
   "excel": {
     "templates": {
+      "supplierImport": {
+        "sheetName": "공급업체가져오기",
+        "fileName": "MRO_공급업체_가져오기_템플릿.xlsx",
+        "columns": {
+          "supplierCode": "공급업체코드",
+          "supplierName": "공급업체명",
+          "contactPerson": "담당자",
+          "email": "이메일",
+          "phone": "전화번호",
+          "address": "주소",
+          "country": "국가",
+          "website": "웹사이트"
+        }
+      },
       "itemImport": {
         "sheetName": "소모품가져오기",
         "fileName": "MRO_소모품_가져오기_템플릿.xlsx",

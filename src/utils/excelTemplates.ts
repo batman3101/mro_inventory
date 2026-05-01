@@ -28,6 +28,19 @@ export function getColumnHeader(key: ColumnKey): string {
   return i18n.t(`excel.templates.itemImport.columns.${key}`);
 }
 
+// Return every possible header text for this column across all supported
+// locales. Lets bulk-import accept a file downloaded under one UI language
+// (e.g. Vietnamese template "Mã vật tư") even when the user is currently in
+// the other UI language (e.g. Korean "소모품코드").
+function getAllHeaders(key: ColumnKey): string[] {
+  const headers = new Set<string>();
+  headers.add(i18n.t(`excel.templates.itemImport.columns.${key}`));
+  for (const lng of ['ko', 'vi']) {
+    headers.add(i18n.t(`excel.templates.itemImport.columns.${key}`, { lng }));
+  }
+  return Array.from(headers);
+}
+
 export const ITEM_IMPORT_COLUMN_KEYS = COLUMN_KEYS;
 
 // Two example rows ship in the template so the two main usage modes are
@@ -105,7 +118,16 @@ export interface ParsedItemRow {
 }
 
 export function cellOf(row: Record<string, unknown>, key: ColumnKey): unknown {
-  return row[getColumnHeader(key)];
+  for (const header of getAllHeaders(key)) {
+    const v = row[header];
+    if (v !== undefined && v !== null && v !== '') return v;
+  }
+  // Last fallback: empty string from any matching header (so column existence
+  // is detected even with blank cells).
+  for (const header of getAllHeaders(key)) {
+    if (header in row) return row[header];
+  }
+  return undefined;
 }
 
 export function parseExcelDate(raw: unknown): string | null {
@@ -130,6 +152,97 @@ function toNullableNumber(raw: unknown): number | null {
   if (raw === undefined || raw === null || raw === '') return null;
   const n = Number(raw);
   return Number.isFinite(n) ? n : null;
+}
+
+// =============================================================================
+// Supplier bulk import — separate from items
+// =============================================================================
+
+const SUPPLIER_COLUMN_KEYS = [
+  'supplierCode',
+  'supplierName',
+  'contactPerson',
+  'email',
+  'phone',
+  'address',
+  'country',
+  'website',
+] as const;
+
+type SupplierColumnKey = (typeof SUPPLIER_COLUMN_KEYS)[number];
+
+function getSupplierHeader(key: SupplierColumnKey): string {
+  return i18n.t(`excel.templates.supplierImport.columns.${key}`);
+}
+
+function getAllSupplierHeaders(key: SupplierColumnKey): string[] {
+  const headers = new Set<string>();
+  headers.add(i18n.t(`excel.templates.supplierImport.columns.${key}`));
+  for (const lng of ['ko', 'vi']) {
+    headers.add(i18n.t(`excel.templates.supplierImport.columns.${key}`, { lng }));
+  }
+  return Array.from(headers);
+}
+
+function supplierCellOf(row: Record<string, unknown>, key: SupplierColumnKey): unknown {
+  for (const header of getAllSupplierHeaders(key)) {
+    const v = row[header];
+    if (v !== undefined && v !== null && v !== '') return v;
+  }
+  return undefined;
+}
+
+export function downloadSupplierImportTemplate(): void {
+  const headers = SUPPLIER_COLUMN_KEYS.map(getSupplierHeader);
+  const example: Record<string, string> = {};
+  headers.forEach((h) => { example[h] = ''; });
+  example[getSupplierHeader('supplierCode')] = 'SUP-001';
+  example[getSupplierHeader('supplierName')] = 'Sample Supplier Co.';
+  example[getSupplierHeader('contactPerson')] = 'Mr. Kim';
+  example[getSupplierHeader('email')] = 'contact@example.com';
+  example[getSupplierHeader('phone')] = '+84 28 0000 0000';
+  example[getSupplierHeader('country')] = 'Vietnam';
+
+  const ws = XLSX.utils.json_to_sheet([example], { header: headers });
+  ws['!cols'] = headers.map((h) => ({ wch: Math.max(14, h.length + 4) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, i18n.t('excel.templates.supplierImport.sheetName'));
+  XLSX.writeFile(wb, i18n.t('excel.templates.supplierImport.fileName'));
+}
+
+export interface ParsedSupplierRow {
+  supplierCode: string;
+  supplierName: string;
+  contactPerson: string;
+  email: string;
+  phone: string;
+  address: string;
+  country: string;
+  website: string;
+}
+
+export function parseSupplierRow(
+  row: Record<string, unknown>
+): { ok: true; data: ParsedSupplierRow } | { ok: false; error: string } {
+  const supplierCode = String(supplierCellOf(row, 'supplierCode') ?? '').trim();
+  const supplierName = String(supplierCellOf(row, 'supplierName') ?? '').trim();
+
+  if (!supplierCode) return { ok: false, error: i18n.t('suppliers.bulkErrorCodeRequired') };
+  if (!supplierName) return { ok: false, error: i18n.t('suppliers.bulkErrorNameRequired') };
+
+  return {
+    ok: true,
+    data: {
+      supplierCode,
+      supplierName,
+      contactPerson: String(supplierCellOf(row, 'contactPerson') ?? '').trim(),
+      email: String(supplierCellOf(row, 'email') ?? '').trim(),
+      phone: String(supplierCellOf(row, 'phone') ?? '').trim(),
+      address: String(supplierCellOf(row, 'address') ?? '').trim(),
+      country: String(supplierCellOf(row, 'country') ?? '').trim(),
+      website: String(supplierCellOf(row, 'website') ?? '').trim(),
+    },
+  };
 }
 
 export function parseItemRow(

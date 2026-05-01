@@ -88,6 +88,7 @@ const Items = () => {
     success: number;
     failed: number;
     errors: string[];
+    warnings: string[];
   } | null>(null);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [currentPriceMap, setCurrentPriceMap] = useState<Map<string, ItemPrice>>(new Map());
@@ -317,6 +318,7 @@ const Items = () => {
       const today = new Date().toISOString().slice(0, 10);
 
       const errors: string[] = [];
+      const warnings: string[] = [];
       let success = 0;
 
       for (let i = 0; i < rows.length; i++) {
@@ -343,18 +345,20 @@ const Items = () => {
           categoryId = found;
         }
 
-        // Resolve supplier if provided (only when adding price)
+        // Resolve supplier if provided. Soft fallback: missing supplier name
+        // does NOT abort the row — the price gets stored with supplier_id=null
+        // and a warning is collected. User can match it later.
         let supplierId: string | null = null;
         if (r.supplierName) {
           const found = supplierMap.get(r.supplierName);
-          if (!found) {
-            errors.push(t('items.bulkErrorRow', {
+          if (found) {
+            supplierId = found;
+          } else {
+            warnings.push(t('items.bulkErrorRow', {
               row: rowNum,
-              msg: t('items.bulkErrorSupplierNotFound', { name: r.supplierName }),
+              msg: t('items.bulkWarnSupplierNotFound', { name: r.supplierName }),
             }));
-            continue;
           }
-          supplierId = found;
         }
 
         try {
@@ -429,6 +433,7 @@ const Items = () => {
         success,
         failed: errors.length,
         errors,
+        warnings,
       });
       if (success > 0) fetchData();
     } catch (e) {
@@ -663,10 +668,23 @@ const Items = () => {
                 <List
                   size="small"
                   bordered
+                  header={<strong style={{ color: '#ff4d4f' }}>{t('items.bulkErrorsHeader')}</strong>}
                   dataSource={bulkResult.errors}
-                  style={{ maxHeight: 240, overflowY: 'auto' }}
+                  style={{ maxHeight: 200, overflowY: 'auto' }}
                   renderItem={(item) => (
                     <List.Item style={{ color: '#ff4d4f' }}>{item}</List.Item>
+                  )}
+                />
+              )}
+              {bulkResult.warnings.length > 0 && (
+                <List
+                  size="small"
+                  bordered
+                  header={<strong style={{ color: '#faad14' }}>{t('items.bulkWarningsHeader')}</strong>}
+                  dataSource={bulkResult.warnings}
+                  style={{ maxHeight: 200, overflowY: 'auto' }}
+                  renderItem={(item) => (
+                    <List.Item style={{ color: '#faad14' }}>{item}</List.Item>
                   )}
                 />
               )}
