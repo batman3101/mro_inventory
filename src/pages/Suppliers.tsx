@@ -395,7 +395,7 @@ const Suppliers = () => {
           </Form.Item>
         </Form>
       </DraggableModal>
-    </div>
+
       <DraggableModal
         title={t('suppliers.bulkDialogTitle')}
         open={bulkOpen}
