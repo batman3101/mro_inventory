@@ -363,19 +363,25 @@ const Items = () => {
 
         try {
           let itemId: string;
-          if (r.itemCode) {
-            // Update mode: existing item
-            const existing = itemMap.get(r.itemCode);
-            if (!existing) {
-              errors.push(t('items.bulkErrorRow', {
-                row: rowNum,
-                msg: t('items.bulkErrorItemNotFound', { code: r.itemCode }),
-              }));
-              continue;
-            }
+          const existing = itemMap.get(r.itemCode);
+          // parseItemRow already guarantees itemCode is non-empty. price-only
+          // rows omit name+unit and only update the price for an existing code.
+          const isPriceOnly = !r.itemName && !r.unit;
+
+          if (existing) {
+            // Existing item — only the price (if provided) gets updated below.
             itemId = existing;
+          } else if (isPriceOnly) {
+            // Code references an item that doesn't exist, but row carries no
+            // name/unit so we can't create one. Surface to user.
+            errors.push(t('items.bulkErrorRow', {
+              row: rowNum,
+              msg: t('items.bulkErrorItemNotFound', { code: r.itemCode }),
+            }));
+            continue;
           } else {
-            // Create new item — categoryId is required (DB FK NOT NULL).
+            // Create new item with the user-supplied code.
+            // categoryId is required (DB FK NOT NULL).
             if (!categoryId) {
               errors.push(t('items.bulkErrorRow', {
                 row: rowNum,
@@ -383,7 +389,6 @@ const Items = () => {
               }));
               continue;
             }
-            // Use user-supplied item_code.
             const created = await createItem({
               item_code: r.itemCode,
               item_name: r.itemName,
