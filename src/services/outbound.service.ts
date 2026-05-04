@@ -152,11 +152,47 @@ export async function createOutbound(
   };
 }
 
-export async function deleteOutbound(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('outbound')
-    .delete()
-    .eq('outbound_id', id);
+export async function updateOutbound(
+  id: string,
+  data: Pick<Outbound, 'item_id' | 'quantity' | 'outbound_date' | 'requester' | 'department_id' | 'purpose' | 'cost_center' | 'notes'>,
+  updatedBy: string,
+): Promise<Outbound> {
+  // Atomic RPC mirrors update_inbound_atomic but with reversed signs:
+  // outbound is deductive, so prev.quantity restores stock and new.quantity
+  // re-deducts it. Negative-stock guard prevents over-issue on edit.
+  const { error } = await supabase.rpc('update_outbound_atomic', {
+    p_outbound_id: id,
+    p_item_id: data.item_id,
+    p_quantity: data.quantity,
+    p_outbound_date: data.outbound_date,
+    p_requester: data.requester,
+    p_department_id: data.department_id,
+    p_purpose: data.purpose,
+    p_cost_center: data.cost_center,
+    p_notes: data.notes,
+    p_updated_by: updatedBy,
+  });
+
+  if (error) {
+    if (error.message.includes('inventory_negative')) {
+      throw new Error(i18n.t('errors.outbound.stockInsufficient', {
+        current: '?',
+        requested: data.quantity,
+      }));
+    }
+    throw new Error(i18n.t('errors.outbound.createFailed', { message: error.message }));
+  }
+
+  return getOutboundById(id) as Promise<Outbound>;
+}
+
+export async function deleteOutbound(id: string, updatedBy: string): Promise<void> {
+  // Atomic RPC restores the deducted quantity and deletes the ledger row.
+  // Idempotent — missing row returns false silently.
+  const { error } = await supabase.rpc('delete_outbound_atomic', {
+    p_outbound_id: id,
+    p_updated_by: updatedBy,
+  });
 
   if (error) {
     throw new Error(i18n.t('errors.outbound.deleteFailed', { message: error.message }));

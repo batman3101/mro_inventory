@@ -178,6 +178,22 @@
     "lowStockItems": "Vật tư sắp hết",
     "bulkImport": "Nhập hàng loạt",
     "importProcessing": "Đang xử lý tệp...",
+    "template": "Mẫu tồn kho",
+    "templateKo": "Mẫu tiếng Hàn",
+    "templateVi": "Mẫu tiếng Việt",
+    "bulkDialogTitle": "Tải lên tồn kho hàng loạt",
+    "bulkHelp": "Tải lên tệp Excel theo định dạng mẫu. Mã vật tư / Số lượng hiện tại bắt buộc; Vị trí lưu kho tùy chọn. Cùng (vật tư, nhà máy) sẽ ghi đè tồn kho hiện có.",
+    "bulkDropHint": "Nhấp hoặc kéo tệp Excel vào đây",
+    "bulkProcessing": "Đang xử lý...",
+    "bulkResultTitle": "Kết quả nhập hàng loạt",
+    "bulkSummary": "Tổng {{total}} dòng — Thành công {{success}}, Thất bại {{failed}}",
+    "bulkErrorsHeader": "Lỗi (dòng không cập nhật được)",
+    "bulkErrorRow": "Dòng {{row}}: {{msg}}",
+    "bulkErrorItemCodeRequired": "Mã vật tư là bắt buộc",
+    "bulkErrorQuantityRequired": "Số lượng hiện tại là bắt buộc",
+    "bulkErrorInvalidQuantity": "Số lượng phải là số không âm",
+    "bulkErrorItemNotFound": "Không tìm thấy mã vật tư '{{code}}'",
+    "bulkParseFailed": "Xử lý tệp Excel thất bại.",
     "editQuantity": "Sửa số lượng",
     "quantityRequired": "Vui lòng nhập số lượng",
     "updateSuccess": "Đã cập nhật số lượng.",
@@ -452,6 +468,10 @@
       "alertsFetchFailed": "Tải cảnh báo đặt hàng lại thất bại: {{message}}",
       "acknowledgeAlertFailed": "Xác nhận cảnh báo thất bại: {{message}}",
       "resolveAlertFailed": "Giải quyết cảnh báo thất bại: {{message}}",
+      "deltaFetchFailed": "Tải tồn kho thất bại: {{message}}",
+      "deltaUpdateFailed": "Đồng bộ số lượng tồn kho thất bại: {{message}}",
+      "deltaCreateFailed": "Tạo tồn kho thất bại: {{message}}",
+      "deltaNegative": "Tồn kho không đủ: hiện tại {{current}}, biến thiên cần {{delta}}",
       "listFallback": "Tải danh sách tồn kho thất bại",
       "alertsFallback": "Tải cảnh báo đặt hàng lại thất bại"
     },
@@ -501,6 +521,15 @@
           "currency": "Tiền tệ",
           "supplierName": "Tên nhà cung cấp",
           "effectiveFrom": "Ngày áp dụng"
+        }
+      },
+      "inventoryImport": {
+        "sheetName": "NhapTonKho",
+        "fileName": "MRO_Mau_Nhap_Ton_Kho.xlsx",
+        "columns": {
+          "itemCode": "Mã vật tư",
+          "currentQuantity": "Số lượng hiện tại",
+          "storageLocation": "Vị trí lưu kho"
         }
       }
     },

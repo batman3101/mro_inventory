@@ -70,6 +70,62 @@ export async function getInventoryByItemId(itemId: string): Promise<InventoryWit
   };
 }
 
+// Bulk import path: sets the absolute current_quantity (not a delta) for an
+// (item, location) pair. Inserts a new inventory row when none exists.
+export async function upsertInventoryQuantity(
+  itemId: string,
+  locationId: string,
+  newQuantity: number,
+  storageLocation: string,
+  updatedBy: string,
+): Promise<void> {
+  const { data: existing, error: fetchErr } = await supabase
+    .from('inventory')
+    .select('inventory_id')
+    .eq('item_id', itemId)
+    .eq('location_id', locationId)
+    .maybeSingle();
+
+  if (fetchErr) {
+    throw new Error(i18n.t('errors.inventory.deltaFetchFailed', { message: fetchErr.message }));
+  }
+
+  if (existing) {
+    // Bulk import is semantically a fresh stock count — refresh
+    // last_count_date so the Inventory page's "최근 업데이트" column reflects
+    // when the user actually counted.
+    const updateData: Record<string, unknown> = {
+      current_quantity: newQuantity,
+      last_count_date: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      updated_by: updatedBy,
+    };
+    if (storageLocation) updateData.storage_location = storageLocation;
+
+    const { error: updErr } = await supabase
+      .from('inventory')
+      .update(updateData)
+      .eq('inventory_id', existing.inventory_id);
+    if (updErr) {
+      throw new Error(i18n.t('errors.inventory.deltaUpdateFailed', { message: updErr.message }));
+    }
+  } else {
+    const { error: insErr } = await supabase
+      .from('inventory')
+      .insert({
+        item_id: itemId,
+        location_id: locationId,
+        current_quantity: newQuantity,
+        last_count_date: new Date().toISOString(),
+        storage_location: storageLocation,
+        updated_by: updatedBy,
+      });
+    if (insErr) {
+      throw new Error(i18n.t('errors.inventory.deltaCreateFailed', { message: insErr.message }));
+    }
+  }
+}
+
 export async function updateQuantity(
   inventoryId: string,
   newQuantity: number,

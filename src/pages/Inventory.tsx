@@ -5,12 +5,17 @@ import {
   Card,
   Tag,
   Button,
+  Dropdown,
   Row,
   Col,
   Statistic,
   Modal,
   Form,
   InputNumber,
+  Upload,
+  Alert,
+  List,
+  Space,
   message,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
@@ -24,7 +29,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import * as XLSX from 'xlsx';
 import type { ColumnsType } from 'antd/es/table';
+import type { MenuProps } from 'antd';
 import { useInventoryStore } from '@/store/inventory.store';
+import { downloadInventoryImportTemplate, parseInventoryRow } from '@/utils/excelTemplates';
+import { upsertInventoryQuantity } from '@/services/inventory.service';
+import { getOptionalLocationId } from '@/services/locationContext';
+import { supabase } from '@/lib/supabase';
 import type { InventoryWithItem } from '@/services/inventory.service';
 
 const Inventory = () => {
@@ -34,6 +44,14 @@ const Inventory = () => {
   const [editModal, setEditModal] = useState(false);
   const [editingItem, setEditingItem] = useState<InventoryWithItem | null>(null);
   const [form] = Form.useForm();
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
+  const [bulkResult, setBulkResult] = useState<{
+    total: number;
+    success: number;
+    failed: number;
+    errors: string[];
+  } | null>(null);
 
   useEffect(() => {
     fetchInventory();
@@ -106,17 +124,90 @@ const Inventory = () => {
     XLSX.writeFile(wb, `MRO_${t('inventory.title')}.xlsx`);
   };
 
-  const handleBulkImport = () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.xlsx,.xls';
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0];
-      if (!file) return;
-      message.info(t('inventory.importProcessing'));
-      // TODO: Implement bulk import with Supabase
-    };
-    input.click();
+  const handleBulkUpload = async (file: File) => {
+    // Pre-condition: factory must be selected. Surface this above the try so
+    // a missing-location error doesn't get masked as "Excel parse failed" by
+    // the catch-all below.
+    const locationId = getOptionalLocationId();
+    if (!locationId) {
+      message.error(t('errors.location.notSelected'));
+      return false;
+    }
+
+    setBulkLoading(true);
+    setBulkResult(null);
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: '' });
+
+      // Pre-parse so we can scope the items lookup to only the codes the
+      // user actually uploaded. This sidesteps PostgREST's 1000-row default
+      // cap that an unbounded items SELECT would silently hit on large
+      // catalogs, and is more efficient besides.
+      const parsedRows = rows.map((row) => parseInventoryRow(row));
+      const codes = Array.from(new Set(
+        parsedRows.flatMap((p) => (p.ok ? [p.data.itemCode] : [])),
+      ));
+
+      const itemMap = new Map<string, string>();
+      if (codes.length > 0) {
+        const { data: itemsList, error: itemsErr } = await supabase
+          .from('items')
+          .select('item_id, item_code')
+          .in('item_code', codes);
+        if (itemsErr) {
+          throw new Error(itemsErr.message);
+        }
+        ((itemsList ?? []) as Array<{ item_id: string; item_code: string }>).forEach(
+          (i) => itemMap.set(i.item_code, i.item_id),
+        );
+      }
+
+      const errors: string[] = [];
+      let success = 0;
+
+      for (let i = 0; i < parsedRows.length; i++) {
+        const rowNum = i + 2;
+        const parsed = parsedRows[i];
+        if (!parsed.ok) {
+          errors.push(t('inventory.bulkErrorRow', { row: rowNum, msg: parsed.error }));
+          continue;
+        }
+        const r = parsed.data;
+
+        const itemId = itemMap.get(r.itemCode);
+        if (!itemId) {
+          errors.push(t('inventory.bulkErrorRow', {
+            row: rowNum,
+            msg: t('inventory.bulkErrorItemNotFound', { code: r.itemCode }),
+          }));
+          continue;
+        }
+
+        try {
+          await upsertInventoryQuantity(itemId, locationId, r.currentQuantity, r.storageLocation, 'admin');
+          success++;
+        } catch (e) {
+          errors.push(t('inventory.bulkErrorRow', {
+            row: rowNum,
+            msg: e instanceof Error ? e.message : 'unknown',
+          }));
+        }
+      }
+
+      setBulkResult({ total: rows.length, success, failed: errors.length, errors });
+      if (success > 0) fetchInventory();
+    } catch (e) {
+      console.error('inventory bulk upload failed:', e);
+      // Surface the underlying message so genuine fetch/permission errors
+      // aren't all conflated as "Excel parse failed".
+      message.error(e instanceof Error ? e.message : t('inventory.bulkParseFailed'));
+    } finally {
+      setBulkLoading(false);
+    }
+    return false;
   };
 
   const columns: ColumnsType<InventoryWithItem> = [
@@ -266,7 +357,28 @@ const Inventory = () => {
             <span style={{ color: '#666', fontSize: 13 }}>
               {t('common.total', { count: filteredItems.length })}
             </span>
-            <Button icon={<UploadOutlined />} onClick={handleBulkImport}>
+            <Dropdown
+              menu={{
+                items: [
+                  {
+                    key: 'ko',
+                    label: t('inventory.templateKo'),
+                    onClick: () => downloadInventoryImportTemplate('ko'),
+                  },
+                  {
+                    key: 'vi',
+                    label: t('inventory.templateVi'),
+                    onClick: () => downloadInventoryImportTemplate('vi'),
+                  },
+                ] satisfies MenuProps['items'],
+              }}
+            >
+              <Button icon={<DownloadOutlined />}>{t('inventory.template')}</Button>
+            </Dropdown>
+            <Button
+              icon={<UploadOutlined />}
+              onClick={() => { setBulkResult(null); setBulkOpen(true); }}
+            >
               Excel {t('inventory.bulkImport')}
             </Button>
             <Button icon={<DownloadOutlined />} onClick={handleExport}>
@@ -319,6 +431,63 @@ const Inventory = () => {
             <InputNumber min={0} style={{ width: '100%' }} />
           </Form.Item>
         </Form>
+      </DraggableModal>
+
+      {/* Bulk upload modal */}
+      <DraggableModal
+        title={t('inventory.bulkDialogTitle')}
+        open={bulkOpen}
+        onCancel={() => setBulkOpen(false)}
+        footer={<Button onClick={() => setBulkOpen(false)}>{t('common.cancel')}</Button>}
+        width={680}
+        destroyOnHidden
+      >
+        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+          <Alert type="info" showIcon message={t('inventory.bulkHelp')} />
+
+          <Upload.Dragger
+            multiple={false}
+            accept=".xlsx,.xls"
+            showUploadList={false}
+            disabled={bulkLoading}
+            beforeUpload={(file) => {
+              handleBulkUpload(file);
+              return false;
+            }}
+          >
+            <p className="ant-upload-drag-icon"><UploadOutlined /></p>
+            <p className="ant-upload-text">{t('inventory.bulkDropHint')}</p>
+          </Upload.Dragger>
+
+          {bulkLoading && <Alert type="warning" message={t('inventory.bulkProcessing')} />}
+
+          {bulkResult && (
+            <>
+              <Alert
+                type={bulkResult.failed === 0 ? 'success' : 'warning'}
+                showIcon
+                message={t('inventory.bulkResultTitle')}
+                description={t('inventory.bulkSummary', {
+                  total: bulkResult.total,
+                  success: bulkResult.success,
+                  failed: bulkResult.failed,
+                })}
+              />
+              {bulkResult.errors.length > 0 && (
+                <List
+                  size="small"
+                  bordered
+                  header={<strong style={{ color: '#ff4d4f' }}>{t('inventory.bulkErrorsHeader')}</strong>}
+                  dataSource={bulkResult.errors}
+                  style={{ maxHeight: 200, overflowY: 'auto' }}
+                  renderItem={(item) => (
+                    <List.Item style={{ color: '#ff4d4f' }}>{item}</List.Item>
+                  )}
+                />
+              )}
+            </>
+          )}
+        </Space>
       </DraggableModal>
 
       {/* Row highlight style */}

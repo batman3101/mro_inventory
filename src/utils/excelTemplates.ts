@@ -245,6 +245,92 @@ export function parseSupplierRow(
   };
 }
 
+// =============================================================================
+// Inventory bulk import template — separate from items
+// =============================================================================
+
+const INVENTORY_COLUMN_KEYS = [
+  'itemCode',
+  'currentQuantity',
+  'storageLocation',
+] as const;
+
+type InventoryColumnKey = (typeof INVENTORY_COLUMN_KEYS)[number];
+
+function getInventoryHeader(key: InventoryColumnKey, lng?: string): string {
+  return i18n.t(`excel.templates.inventoryImport.columns.${key}`, lng ? { lng } : undefined);
+}
+
+// Forced-language download: lets the page expose both KO and VI buttons
+// regardless of the active UI language so users can pick the locale that
+// matches their excel workflow.
+export function downloadInventoryImportTemplate(lng?: 'ko' | 'vi'): void {
+  const headers = INVENTORY_COLUMN_KEYS.map((k) => getInventoryHeader(k, lng));
+  const example: Record<string, string | number> = {};
+  headers.forEach((h) => { example[h] = ''; });
+  example[getInventoryHeader('itemCode', lng)] = 'SAMPLE-001';
+  example[getInventoryHeader('currentQuantity', lng)] = 100;
+  example[getInventoryHeader('storageLocation', lng)] = 'A-01';
+
+  const ws = XLSX.utils.json_to_sheet([example], { header: headers });
+  ws['!cols'] = headers.map((h) => ({ wch: Math.max(14, h.length + 4) }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(
+    wb,
+    ws,
+    i18n.t('excel.templates.inventoryImport.sheetName', lng ? { lng } : undefined)
+  );
+  XLSX.writeFile(wb, i18n.t('excel.templates.inventoryImport.fileName', lng ? { lng } : undefined));
+}
+
+function getAllInventoryHeaders(key: InventoryColumnKey): string[] {
+  const headers = new Set<string>();
+  headers.add(i18n.t(`excel.templates.inventoryImport.columns.${key}`));
+  for (const lng of ['ko', 'vi']) {
+    headers.add(i18n.t(`excel.templates.inventoryImport.columns.${key}`, { lng }));
+  }
+  return Array.from(headers);
+}
+
+function inventoryCellOf(row: Record<string, unknown>, key: InventoryColumnKey): unknown {
+  for (const header of getAllInventoryHeaders(key)) {
+    const v = row[header];
+    if (v !== undefined && v !== null && v !== '') return v;
+  }
+  return undefined;
+}
+
+export interface ParsedInventoryRow {
+  itemCode: string;
+  currentQuantity: number;
+  storageLocation: string;
+}
+
+export function parseInventoryRow(
+  row: Record<string, unknown>
+): { ok: true; data: ParsedInventoryRow } | { ok: false; error: string } {
+  const itemCode = String(inventoryCellOf(row, 'itemCode') ?? '').trim();
+  if (!itemCode) return { ok: false, error: i18n.t('inventory.bulkErrorItemCodeRequired') };
+
+  const rawQty = inventoryCellOf(row, 'currentQuantity');
+  if (rawQty === undefined || rawQty === null || rawQty === '') {
+    return { ok: false, error: i18n.t('inventory.bulkErrorQuantityRequired') };
+  }
+  const qty = Number(rawQty);
+  if (!Number.isFinite(qty) || qty < 0) {
+    return { ok: false, error: i18n.t('inventory.bulkErrorInvalidQuantity') };
+  }
+
+  return {
+    ok: true,
+    data: {
+      itemCode,
+      currentQuantity: qty,
+      storageLocation: String(inventoryCellOf(row, 'storageLocation') ?? '').trim(),
+    },
+  };
+}
+
 export function parseItemRow(
   row: Record<string, unknown>
 ): { ok: true; data: ParsedItemRow } | { ok: false; error: string } {

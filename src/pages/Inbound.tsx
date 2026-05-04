@@ -122,7 +122,7 @@ const InboundPage = () => {
         inbound_date: values.inbound_date.format('YYYY-MM-DD'),
       };
       if (editingRecord) {
-        await updateInbound(editingRecord.inbound_id, payload);
+        await updateInbound(editingRecord.inbound_id, payload, 'admin');
         message.success(t('inbound.editSuccess'));
       } else {
         await createInbound({ ...payload, location_id: currentLocationId, created_by: '' });
@@ -138,7 +138,7 @@ const InboundPage = () => {
   };
 
   const handleDelete = async (id: string) => {
-    try { await deleteInbound(id); message.success(t('inbound.deleteSuccess')); }
+    try { await deleteInbound(id, 'admin'); message.success(t('inbound.deleteSuccess')); }
     catch (e) {
       console.error('inbound delete failed:', e);
       message.error(e instanceof Error ? e.message : t('inbound.deleteFailed'));

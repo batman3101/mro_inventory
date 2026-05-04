@@ -11,7 +11,12 @@ interface OutboundState {
   createOutbound: (
     data: Parameters<typeof outboundService.createOutbound>[0]
   ) => Promise<Outbound>;
-  deleteOutbound: (id: string) => Promise<void>;
+  updateOutbound: (
+    id: string,
+    data: Parameters<typeof outboundService.updateOutbound>[1],
+    updatedBy: string,
+  ) => Promise<Outbound>;
+  deleteOutbound: (id: string, updatedBy: string) => Promise<void>;
 }
 
 export const useOutboundStore = create<OutboundState>((set) => ({
@@ -36,8 +41,18 @@ export const useOutboundStore = create<OutboundState>((set) => ({
     return created;
   },
 
-  deleteOutbound: async (id) => {
-    await outboundService.deleteOutbound(id);
+  updateOutbound: async (id, data, updatedBy) => {
+    const updated = await outboundService.updateOutbound(id, data, updatedBy);
+    set((state) => ({
+      outboundRecords: state.outboundRecords.map((r) =>
+        r.outbound_id === id ? updated : r,
+      ),
+    }));
+    return updated;
+  },
+
+  deleteOutbound: async (id, updatedBy) => {
+    await outboundService.deleteOutbound(id, updatedBy);
     set((state) => ({
       outboundRecords: state.outboundRecords.filter(
         (r) => r.outbound_id !== id

@@ -178,6 +178,22 @@
     "lowStockItems": "재고 부족 품목",
     "bulkImport": "일괄 등록",
     "importProcessing": "파일을 처리 중입니다...",
+    "template": "재고 템플릿",
+    "templateKo": "한국어 템플릿",
+    "templateVi": "베트남어 템플릿",
+    "bulkDialogTitle": "재고 일괄 업로드",
+    "bulkHelp": "Excel 템플릿 양식대로 업로드하세요. 소모품코드/현재수량은 필수, 보관위치는 선택입니다. 동일한 (자재, 공장) 조합은 기존 재고를 덮어씁니다.",
+    "bulkDropHint": "Excel 파일을 클릭하거나 끌어다 놓으세요",
+    "bulkProcessing": "처리 중입니다...",
+    "bulkResultTitle": "재고 일괄 업로드 결과",
+    "bulkSummary": "총 {{total}}행 — 성공 {{success}}, 실패 {{failed}}",
+    "bulkErrorsHeader": "오류 (반영되지 않은 행)",
+    "bulkErrorRow": "{{row}}행: {{msg}}",
+    "bulkErrorItemCodeRequired": "소모품코드는 필수입니다",
+    "bulkErrorQuantityRequired": "현재수량은 필수입니다",
+    "bulkErrorInvalidQuantity": "수량은 0 이상의 숫자여야 합니다",
+    "bulkErrorItemNotFound": "소모품코드 '{{code}}'를 찾을 수 없습니다",
+    "bulkParseFailed": "Excel 파일 처리에 실패했습니다.",
     "editQuantity": "수량 수정",
     "quantityRequired": "수량을 입력하세요",
     "updateSuccess": "수량이 수정되었습니다.",
@@ -452,6 +468,10 @@
       "alertsFetchFailed": "재주문 알림 조회 실패: {{message}}",
       "acknowledgeAlertFailed": "알림 확인 처리 실패: {{message}}",
       "resolveAlertFailed": "알림 해결 처리 실패: {{message}}",
+      "deltaFetchFailed": "재고 조회 실패: {{message}}",
+      "deltaUpdateFailed": "재고 수량 동기화 실패: {{message}}",
+      "deltaCreateFailed": "재고 생성 실패: {{message}}",
+      "deltaNegative": "재고 부족: 현재 {{current}}, 필요한 변경량 {{delta}}",
       "listFallback": "재고 목록 조회 실패",
       "alertsFallback": "재주문 알림 조회 실패"
     },
@@ -501,6 +521,15 @@
           "currency": "통화",
           "supplierName": "공급업체명",
           "effectiveFrom": "적용시작일"
+        }
+      },
+      "inventoryImport": {
+        "sheetName": "재고가져오기",
+        "fileName": "MRO_재고_가져오기_템플릿.xlsx",
+        "columns": {
+          "itemCode": "소모품코드",
+          "currentQuantity": "현재수량",
+          "storageLocation": "보관위치"
         }
       }
     },

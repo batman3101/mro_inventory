@@ -145,29 +145,46 @@ export async function createInbound(
 
 export async function updateInbound(
   id: string,
-  data: Pick<Inbound, 'item_id' | 'supplier_id' | 'quantity' | 'unit_price' | 'currency' | 'notes' | 'inbound_date'>
+  data: Pick<Inbound, 'item_id' | 'supplier_id' | 'quantity' | 'unit_price' | 'currency' | 'notes' | 'inbound_date'>,
+  updatedBy: string,
 ): Promise<Inbound> {
-  const total_price = data.quantity * data.unit_price;
-
-  const { error } = await supabase
-    .from('inbound')
-    .update({ ...data, total_price })
-    .eq('inbound_id', id);
+  // Single atomic RPC: row update + inventory delta(s) commit or rollback
+  // together. No partial-failure desync, no retry double-counting, no race
+  // with concurrent in/out writers — the server takes a row lock.
+  const { error } = await supabase.rpc('update_inbound_atomic', {
+    p_inbound_id: id,
+    p_item_id: data.item_id,
+    p_supplier_id: data.supplier_id,
+    p_quantity: data.quantity,
+    p_unit_price: data.unit_price,
+    p_currency: data.currency,
+    p_notes: data.notes,
+    p_inbound_date: data.inbound_date,
+    p_updated_by: updatedBy,
+  });
 
   if (error) {
+    if (error.message.includes('inventory_negative')) {
+      throw new Error(i18n.t('errors.inventory.deltaNegative', { current: '?', delta: data.quantity }));
+    }
     throw new Error(i18n.t('errors.inbound.updateFailed', { message: error.message }));
   }
 
   return getInboundById(id) as Promise<Inbound>;
 }
 
-export async function deleteInbound(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('inbound')
-    .delete()
-    .eq('inbound_id', id);
+export async function deleteInbound(id: string, updatedBy: string): Promise<void> {
+  // Atomic RPC: undo inventory contribution + delete ledger row in one tx.
+  // Idempotent — a missing row returns false silently.
+  const { error } = await supabase.rpc('delete_inbound_atomic', {
+    p_inbound_id: id,
+    p_updated_by: updatedBy,
+  });
 
   if (error) {
+    if (error.message.includes('inventory_negative')) {
+      throw new Error(i18n.t('errors.inventory.deltaNegative', { current: '?', delta: 0 }));
+    }
     throw new Error(i18n.t('errors.inbound.deleteFailed', { message: error.message }));
   }
 }

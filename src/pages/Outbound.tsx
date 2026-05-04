@@ -32,7 +32,7 @@ interface OutboundFormValues {
 
 const OutboundPage = () => {
   const { t } = useTranslation();
-  const { outboundRecords, isLoading, fetchOutbound, createOutbound, deleteOutbound } =
+  const { outboundRecords, isLoading, fetchOutbound, createOutbound, updateOutbound, deleteOutbound } =
     useOutboundStore();
 
   const [items, setItems] = useState<Item[]>([]);
@@ -146,15 +146,19 @@ const OutboundPage = () => {
     setSubmitting(true);
     try {
       if (editingRecord) {
-        const { error } = await supabase.from('outbound').update({
-          item_id: values.item_id, location_id: selectedLocationId,
-          quantity: values.quantity, requester: values.requester,
+        // Route through the atomic RPC so inventory stays in sync with the
+        // edit (qty change, item swap, etc.). location_id is intentionally
+        // not edited — this page locks it to the current factory.
+        await updateOutbound(editingRecord.outbound_id, {
+          item_id: values.item_id,
+          quantity: values.quantity,
+          requester: values.requester,
           department_id: values.department_id ?? null,
-          purpose: values.purpose ?? '', cost_center: values.cost_center ?? '',
+          purpose: values.purpose ?? '',
+          cost_center: values.cost_center ?? '',
           outbound_date: values.outbound_date.format('YYYY-MM-DD'),
           notes: values.notes ?? '',
-        }).eq('outbound_id', editingRecord.outbound_id);
-        if (error) throw new Error(error.message);
+        }, 'admin');
         message.success(t('outbound.editSuccess'));
         await fetchOutbound();
       } else {
@@ -178,7 +182,7 @@ const OutboundPage = () => {
 
   const handleDelete = async (id: string) => {
     try {
-      await deleteOutbound(id);
+      await deleteOutbound(id, 'admin');
       message.success(t('outbound.deleteSuccess'));
     } catch (e) {
       console.error('outbound delete failed:', e);
