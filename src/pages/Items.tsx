@@ -17,7 +17,7 @@ import { z } from 'zod';
 import type { ColumnsType } from 'antd/es/table';
 import type { Item, Category, ItemPrice, Supplier } from '@/types/database.types';
 import { getAllItems, createItem, updateItem, deleteItem } from '@/services/items.service';
-import { createItemPrice } from '@/services/itemPrice.service';
+import { createItemPrice, upsertItemPrice } from '@/services/itemPrice.service';
 import { getOptionalLocationId } from '@/services/locationContext';
 import { supabase } from '@/lib/supabase';
 import {
@@ -405,9 +405,11 @@ const Items = () => {
             itemMap.set(created.item_code, created.item_id);
           }
 
-          // If unit price provided, create item_price record
+          // If unit price provided, upsert item_price record. Bulk re-uploads
+          // and excel rows that share (item, supplier, date) would otherwise
+          // fail the unique constraint — upsert overwrites the existing price.
           if (r.unitPrice !== null && r.unitPrice > 0) {
-            await createItemPrice({
+            await upsertItemPrice({
               item_id: itemId,
               location_id: locationId,
               unit_price: r.unitPrice,

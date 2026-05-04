@@ -61,6 +61,37 @@ export async function createItemPrice(
   return created;
 }
 
+// Bulk import path: same (item_id, supplier_id, effective_from) may appear
+// multiple times across re-uploads or duplicate excel rows. Use upsert against
+// the unique constraint so the second occurrence updates the price instead of
+// failing with "duplicate key value violates unique constraint".
+export async function upsertItemPrice(
+  data: Omit<ItemPrice, 'price_id' | 'created_at' | 'supplier_name' | 'source'>
+): Promise<ItemPrice> {
+  if (data.is_current) {
+    const { error: updateError } = await supabase
+      .from('item_prices')
+      .update({ is_current: false })
+      .eq('item_id', data.item_id);
+
+    if (updateError) {
+      throw new Error(i18n.t('errors.itemPrice.deactivateCurrentFailed', { message: updateError.message }));
+    }
+  }
+
+  const { data: upserted, error } = await supabase
+    .from('item_prices')
+    .upsert(data, { onConflict: 'item_id,supplier_id,effective_from' })
+    .select()
+    .single();
+
+  if (error) {
+    throw new Error(i18n.t('errors.itemPrice.createFailed', { message: error.message }));
+  }
+
+  return upserted;
+}
+
 export async function updateItemPrice(
   priceId: string,
   data: Partial<Omit<ItemPrice, 'price_id' | 'created_at' | 'supplier_name' | 'source'>>
