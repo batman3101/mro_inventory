@@ -17,6 +17,7 @@ import {
   List,
   Space,
   message,
+  Typography,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import {
@@ -304,7 +305,7 @@ const Inventory = () => {
 
   return (
     <div style={{ padding: '24px' }}>
-      <h2 style={{ marginBottom: 16 }}>{t('inventory.listTitle')}</h2>
+      <Typography.Title level={3} style={{ marginBottom: 16 }}>{t('inventory.listTitle')}</Typography.Title>
 
       {/* Summary Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>

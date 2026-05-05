@@ -11,6 +11,7 @@ import {
   Card,
   Breadcrumb,
   Tooltip,
+  Typography,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -186,7 +187,7 @@ const Departments = () => {
         style={{ marginBottom: 16 }}
         items={[{ title: t('common.appName') }, { title: t('departments.title') }]}
       />
-      <h2 style={{ marginBottom: 16 }}>{t('departments.title')}</h2>
+      <Typography.Title level={3} style={{ marginBottom: 16 }}>{t('departments.title')}</Typography.Title>
 
       <Card>
         <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { DraggableModal } from "@/components/DraggableModal";
 import {
-  Button, Input, Form, Tag, Space, Popconfirm, message, Card, InputNumber, Switch, Tooltip,
+  Button, Input, Form, Tag, Space, Popconfirm, message, Card, InputNumber, Switch, Tooltip, Typography,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import {
@@ -205,7 +205,7 @@ const Categories = () => {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ margin: 0 }}>{t('categories.title')}</h2>
+        <Typography.Title level={3} style={{ margin: 0 }}>{t('categories.title')}</Typography.Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
           {t('categories.createCategory')}
         </Button>

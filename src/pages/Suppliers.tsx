@@ -13,7 +13,7 @@ import {
   Card,
   Breadcrumb,
 } from 'antd';
-import { Upload, Alert, List, Tooltip } from 'antd';
+import { Upload, Alert, List, Tooltip, Typography } from 'antd';
 import * as XLSX from 'xlsx';
 import { ResizableTable } from '@/components/ResizableTable';
 import {
@@ -306,7 +306,7 @@ const Suppliers = () => {
         style={{ marginBottom: 16 }}
         items={[{ title: t('common.appName') }, { title: t('suppliers.title') }]}
       />
-      <h2 style={{ marginBottom: 16 }}>{t('suppliers.title')}</h2>
+      <Typography.Title level={3} style={{ marginBottom: 16 }}>{t('suppliers.title')}</Typography.Title>
 
       <Card>
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>

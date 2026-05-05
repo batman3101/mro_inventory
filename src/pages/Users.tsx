@@ -14,6 +14,7 @@ import {
   Breadcrumb,
   Popconfirm,
   Tooltip,
+  Typography,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -304,7 +305,7 @@ const Users = () => {
         style={{ marginBottom: 16 }}
         items={[{ title: t('common.appName') }, { title: t('users.title') }]}
       />
-      <h2 style={{ marginBottom: 16 }}>{t('users.title')}</h2>
+      <Typography.Title level={3} style={{ marginBottom: 16 }}>{t('users.title')}</Typography.Title>
 
       <Card>
         {isAdmin && (

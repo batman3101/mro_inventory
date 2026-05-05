@@ -3,7 +3,7 @@ import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button, Input, Select, Form, Tag, Space,
   Popconfirm, message, Card, Row, Col, Descriptions,
-  Upload, Alert, List, Tooltip,
+  Upload, Alert, List, Tooltip, Typography,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import {
@@ -561,7 +561,7 @@ const Items = () => {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ margin: 0 }}>{t('items.title')}</h2>
+        <Typography.Title level={3} style={{ margin: 0 }}>{t('items.title')}</Typography.Title>
         <Space>
           <Button icon={<DownloadOutlined />} onClick={downloadItemImportTemplate}>{t('items.itemTemplate')}</Button>
           <Button icon={<UploadOutlined />} onClick={() => { setBulkResult(null); setBulkOpen(true); }}>{t('items.bulkUpload')}</Button>

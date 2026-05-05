@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button, Input, Select, Form, Space, Popconfirm,
-  message, Card, Row, Col, Statistic, InputNumber, DatePicker, Alert,
+  message, Card, Row, Col, Statistic, InputNumber, DatePicker, Alert, Typography,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import { PlusOutlined, SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
@@ -242,7 +242,7 @@ const OutboundPage = () => {
   return (
     <div style={{ padding: 24 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <h2 style={{ margin: 0 }}>{t('outbound.title')}</h2>
+        <Typography.Title level={3} style={{ margin: 0 }}>{t('outbound.title')}</Typography.Title>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
           {t('outbound.newOutbound')}
         </Button>

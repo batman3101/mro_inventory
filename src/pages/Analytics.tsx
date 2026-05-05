@@ -157,7 +157,7 @@ const Analytics = () => {
   return (
     <div style={{ padding: '24px' }}>
       <Space style={{ marginBottom: '24px', width: '100%', justifyContent: 'space-between' }}>
-        <Title level={2} style={{ margin: 0 }}>
+        <Title level={3} style={{ margin: 0 }}>
           {t('analytics.title')}
         </Title>
         <RangePicker
