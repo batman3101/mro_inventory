@@ -43,6 +43,13 @@ const MainLayout = () => {
     return () => { cancelled = true; };
   }, [setLocations, setCurrentLocation]);
 
+  // antd's default collapsed Sider width is 80px. We pin the Sider to the
+  // viewport so the menu + footer (logout/factory/language) stay visible
+  // regardless of page scroll, and offset the content area by the same width.
+  const SIDER_WIDTH = 240;
+  const SIDER_COLLAPSED_WIDTH = 80;
+  const siderWidth = collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH;
+
   return (
     <Layout style={{ minHeight: '100vh' }}>
       <Sider
@@ -50,11 +57,21 @@ const MainLayout = () => {
         collapsed={collapsed}
         onCollapse={setCollapsed}
         theme="dark"
-        width={240}
+        width={SIDER_WIDTH}
+        collapsedWidth={SIDER_COLLAPSED_WIDTH}
+        style={{
+          position: 'fixed',
+          left: 0,
+          top: 0,
+          bottom: 0,
+          height: '100vh',
+          overflow: 'hidden',
+          zIndex: 100,
+        }}
       >
         <Sidebar collapsed={collapsed} />
       </Sider>
-      <Layout>
+      <Layout style={{ marginLeft: siderWidth, transition: 'margin-left 0.2s' }}>
         <Content
           style={{
             padding: 24,

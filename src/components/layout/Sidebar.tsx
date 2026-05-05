@@ -58,6 +58,7 @@ const Sidebar = ({ collapsed }: SidebarProps) => {
           alignItems: 'center',
           gap: collapsed ? 0 : 10,
           justifyContent: collapsed ? 'center' : 'flex-start',
+          flexShrink: 0,
         }}
       >
         <img
@@ -68,14 +69,19 @@ const Sidebar = ({ collapsed }: SidebarProps) => {
         {!collapsed && <span>{t('common.appName')}</span>}
       </div>
 
-      <Menu
-        mode="inline"
-        theme="dark"
-        selectedKeys={[selectedKey]}
-        items={menuItems}
-        onClick={({ key }) => navigate(key)}
-        style={{ flex: 1, borderRight: 0 }}
-      />
+      {/* Menu wrapper with min-height:0 + overflow:auto so the menu shrinks
+          and scrolls instead of pushing the footer (email/logout/factory/
+          language) below the Sider's collapse trigger on shorter viewports. */}
+      <div style={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+        <Menu
+          mode="inline"
+          theme="dark"
+          selectedKeys={[selectedKey]}
+          items={menuItems}
+          onClick={({ key }) => navigate(key)}
+          style={{ borderRight: 0 }}
+        />
+      </div>
 
       <div
         style={{
@@ -84,6 +90,7 @@ const Sidebar = ({ collapsed }: SidebarProps) => {
           display: 'flex',
           flexDirection: 'column',
           gap: 12,
+          flexShrink: 0,
         }}
       >
         {!collapsed && user && (
