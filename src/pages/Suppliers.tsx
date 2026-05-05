@@ -13,7 +13,7 @@ import {
   Card,
   Breadcrumb,
 } from 'antd';
-import { Upload, Alert, List } from 'antd';
+import { Upload, Alert, List, Tooltip } from 'antd';
 import * as XLSX from 'xlsx';
 import { ResizableTable } from '@/components/ResizableTable';
 import {
@@ -278,18 +278,22 @@ const Suppliers = () => {
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(record)}
-          />
+          <Tooltip title={t('common.edit')}>
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => openEditModal(record)}
+            />
+          </Tooltip>
           <Popconfirm
             title={t('suppliers.deleteConfirm')}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
             onConfirm={() => handleDelete(record.supplier_id)}
           >
-            <Button type="text" danger icon={<DeleteOutlined />} />
+            <Tooltip title={t('common.delete')}>
+              <Button type="text" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),

@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { DraggableModal } from "@/components/DraggableModal";
 import {
-  Button, Input, Form, Tag, Space, Popconfirm, message, Card, InputNumber, Switch,
+  Button, Input, Form, Tag, Space, Popconfirm, message, Card, InputNumber, Switch, Tooltip,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import {
@@ -184,14 +184,18 @@ const Categories = () => {
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          <Button type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          <Tooltip title={t('common.edit')}>
+            <Button type="text" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          </Tooltip>
           <Popconfirm
             title={t('categories.deleteConfirm')}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
             onConfirm={() => handleDelete(record.category_id)}
           >
-            <Button type="text" danger icon={<DeleteOutlined />} />
+            <Tooltip title={t('common.delete')}>
+              <Button type="text" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),

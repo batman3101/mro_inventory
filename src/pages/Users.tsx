@@ -258,11 +258,13 @@ const Users = () => {
 
               return (
                 <Space size="small">
-                  <Button
-                    type="text"
-                    icon={<EditOutlined />}
-                    onClick={() => openEditModal(record)}
-                  />
+                  <Tooltip title={t('common.edit')}>
+                    <Button
+                      type="text"
+                      icon={<EditOutlined />}
+                      onClick={() => openEditModal(record)}
+                    />
+                  </Tooltip>
                   {canDelete ? (
                     <Popconfirm
                       title={t('users.deleteConfirmTitle')}
@@ -272,7 +274,9 @@ const Users = () => {
                       okButtonProps={{ danger: true }}
                       onConfirm={() => handleDelete(record)}
                     >
-                      <Button type="text" danger icon={<DeleteOutlined />} />
+                      <Tooltip title={t('common.delete')}>
+                        <Button type="text" danger icon={<DeleteOutlined />} />
+                      </Tooltip>
                     </Popconfirm>
                   ) : (
                     <Tooltip title={deleteTooltip}>

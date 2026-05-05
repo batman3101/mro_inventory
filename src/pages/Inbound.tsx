@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button, Select, Form, Space, Popconfirm, message,
-  Card, Col, Row, Statistic, Input, InputNumber, DatePicker,
+  Card, Col, Row, Statistic, Input, InputNumber, DatePicker, Tooltip,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import { PlusOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, FileExcelOutlined } from '@ant-design/icons';
@@ -195,9 +195,13 @@ const InboundPage = () => {
       title: t('common.actions'), key: 'actions', width: 100, fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          <Button type="link" icon={<EditOutlined />} onClick={() => openEditModal(record)} style={{ color: '#1677ff', padding: 0 }} />
+          <Tooltip title={t('common.edit')}>
+            <Button type="link" icon={<EditOutlined />} onClick={() => openEditModal(record)} style={{ color: '#1677ff', padding: 0 }} />
+          </Tooltip>
           <Popconfirm title={t('inbound.deleteConfirm')} okText={t('common.confirm')} cancelText={t('common.cancel')} onConfirm={() => handleDelete(record.inbound_id)}>
-            <Button type="link" danger icon={<DeleteOutlined />} style={{ padding: 0 }} />
+            <Tooltip title={t('common.delete')}>
+              <Button type="link" danger icon={<DeleteOutlined />} style={{ padding: 0 }} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),

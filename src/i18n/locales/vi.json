@@ -147,6 +147,8 @@
     "managePrice": "Quản lý đơn giá",
     "priceHistory": "Lịch sử đơn giá",
     "priceHistoryEmpty": "Chưa có đơn giá nào",
+    "priceTrend": "Xu hướng đơn giá",
+    "priceTrendEmpty": "Cần ít nhất 2 đơn giá để hiển thị xu hướng",
     "addPrice": "Thêm đơn giá",
     "editPrice": "Sửa đơn giá",
     "deletePriceConfirm": "Bạn có chắc muốn xóa đơn giá này?",

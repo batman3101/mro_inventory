@@ -147,6 +147,8 @@
     "managePrice": "단가 관리",
     "priceHistory": "단가 이력",
     "priceHistoryEmpty": "등록된 단가가 없습니다",
+    "priceTrend": "단가 추세",
+    "priceTrendEmpty": "추세를 표시하려면 2개 이상의 단가가 필요합니다",
     "addPrice": "단가 추가",
     "editPrice": "단가 수정",
     "deletePriceConfirm": "이 단가를 삭제하시겠습니까?",

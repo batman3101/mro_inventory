@@ -3,7 +3,7 @@ import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button, Input, Select, Form, Tag, Space,
   Popconfirm, message, Card, Row, Col, Descriptions,
-  Upload, Alert, List,
+  Upload, Alert, List, Tooltip,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import {
@@ -133,32 +133,32 @@ const Items = () => {
 
   useEffect(() => { fetchData(); }, []);
 
-  // Initialize / hydrate form fields whenever modal opens.
-  // Avoids the "useForm not connected to any Form element" warning that
-  // previously caused validateFields() to throw silently.
-  useEffect(() => {
-    if (!modalOpen) return;
-    if (editingItem) {
-      form.setFieldsValue({
-        item_code: editingItem.item_code,
-        item_name: editingItem.item_name,
-        korean_name: editingItem.korean_name,
-        vietnamese_name: editingItem.vietnamese_name,
-        category_id: editingItem.category_id,
-        spec: editingItem.spec,
-        unit: editingItem.unit,
-        min_stock: editingItem.min_stock,
-        max_stock: editingItem.max_stock,
-        reorder_point: editingItem.reorder_point,
-        storage_location: editingItem.storage_location,
-        status: editingItem.status,
-        description: editingItem.description,
-      });
-    } else {
-      form.resetFields();
-      form.setFieldsValue({ status: 'ACTIVE', currency: 'VND' });
-    }
-  }, [modalOpen, editingItem, form]);
+  // Initial values for the modal form. We pass these to <Form initialValues=...>
+  // and remount the Form per editing target via `key`, so the values are
+  // applied at mount time. This avoids the timing issues of calling
+  // form.setFieldsValue() after the modal renders, which previously left
+  // required fields blank and forced re-entry.
+  const editInitialValues = useMemo<Partial<ItemFormValues>>(() => {
+    if (!editingItem) return { status: 'ACTIVE', currency: 'VND' };
+    const currentPrice = currentPriceMap.get(editingItem.item_id);
+    return {
+      item_code: editingItem.item_code,
+      item_name: editingItem.item_name,
+      korean_name: editingItem.korean_name ?? '',
+      vietnamese_name: editingItem.vietnamese_name ?? '',
+      category_id: editingItem.category_id ?? '',
+      spec: editingItem.spec ?? '',
+      unit: editingItem.unit,
+      min_stock: editingItem.min_stock ?? 0,
+      max_stock: editingItem.max_stock ?? 0,
+      reorder_point: editingItem.reorder_point ?? 0,
+      storage_location: editingItem.storage_location ?? '',
+      status: editingItem.status ?? 'ACTIVE',
+      description: editingItem.description ?? '',
+      unit_price: currentPrice?.unit_price,
+      currency: currentPrice?.currency ?? 'VND',
+    };
+  }, [editingItem, currentPriceMap]);
 
   const filteredItems = useMemo(
     () => items.filter((item) => {
@@ -211,6 +211,31 @@ const Items = () => {
       const { unit_price, currency, ...itemFields } = values;
       if (editingItem) {
         await updateItem(editingItem.item_id, itemFields);
+        // Persist the unit price too if the user changed it. Without this,
+        // editing only the price field had no effect — the price is stored on
+        // item_prices, not items.
+        const existingPrice = currentPriceMap.get(editingItem.item_id);
+        const priceChanged =
+          typeof unit_price === 'number' &&
+          unit_price > 0 &&
+          (!existingPrice ||
+            existingPrice.unit_price !== unit_price ||
+            existingPrice.currency !== (currency ?? 'VND'));
+        if (priceChanged) {
+          const locationId = getOptionalLocationId();
+          if (!locationId) throw new Error(t('errors.location.notSelected'));
+          await upsertItemPrice({
+            item_id: editingItem.item_id,
+            location_id: locationId,
+            unit_price: unit_price as number,
+            currency: currency ?? 'VND',
+            supplier_id: existingPrice?.supplier_id ?? null,
+            effective_from: new Date().toISOString().slice(0, 10),
+            effective_to: null,
+            is_current: true,
+            created_by: '',
+          });
+        }
         message.success(t('items.updateSuccess'));
       } else {
         const created = await createItem({
@@ -501,14 +526,19 @@ const Items = () => {
       title: t('common.actions'), key: 'actions', width: 240, fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          <Button type="text" icon={<EyeOutlined />} onClick={() => { setDetailItem(record); setDetailOpen(true); }} />
-          <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
-          <Button
-            type="text"
-            icon={<DollarOutlined />}
-            title={t('items.managePrice')}
-            onClick={() => { setPriceManageItem(record); setPriceManageOpen(true); }}
-          />
+          <Tooltip title={t('items.detail')}>
+            <Button type="text" icon={<EyeOutlined />} onClick={() => { setDetailItem(record); setDetailOpen(true); }} />
+          </Tooltip>
+          <Tooltip title={t('common.edit')}>
+            <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
+          </Tooltip>
+          <Tooltip title={t('items.managePrice')}>
+            <Button
+              type="text"
+              icon={<DollarOutlined />}
+              onClick={() => { setPriceManageItem(record); setPriceManageOpen(true); }}
+            />
+          </Tooltip>
           <Popconfirm
             title={record.status === 'ACTIVE' ? t('items.deactivateConfirm') : t('items.activateConfirm')}
             okText={t('common.confirm')} cancelText={t('common.cancel')}
@@ -519,7 +549,9 @@ const Items = () => {
             </Button>
           </Popconfirm>
           <Popconfirm title={t('items.deleteConfirm')} okText={t('common.confirm')} cancelText={t('common.cancel')} onConfirm={() => handleDelete(record.item_id)}>
-            <Button type="text" danger icon={<DeleteOutlined />} />
+            <Tooltip title={t('common.delete')}>
+              <Button type="text" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -556,7 +588,14 @@ const Items = () => {
       <DraggableModal title={editingItem ? t('items.editItem') : t('items.createItem')} open={modalOpen}
         onOk={handleSubmit} onCancel={handleModalCancel} okText={t('common.save')}
         cancelText={t('common.cancel')} confirmLoading={submitting} width={600} destroyOnHidden>
-        <Form form={form} layout="vertical" style={{ marginTop: 8 }} preserve={false}>
+        <Form
+          key={editingItem?.item_id ?? 'new'}
+          form={form}
+          layout="vertical"
+          style={{ marginTop: 8 }}
+          preserve={false}
+          initialValues={editInitialValues}
+        >
           <Form.Item
             name="item_code"
             label={t('items.itemCode')}
@@ -623,6 +662,14 @@ const Items = () => {
             <Descriptions.Item label={t('items.reorderPoint')}>{detailItem.reorder_point}</Descriptions.Item>
             <Descriptions.Item label={t('items.storageLocation')}>{detailItem.storage_location}</Descriptions.Item>
             <Descriptions.Item label={t('common.status')}>{statusTag(detailItem.status, t)}</Descriptions.Item>
+            <Descriptions.Item label={t('items.recentPrice')} span={2}>
+              {(() => {
+                const p = currentPriceMap.get(detailItem.item_id);
+                if (!p) return <span style={{ color: '#aaa', fontStyle: 'italic' }}>{t('items.noPrice')}</span>;
+                const symbol = p.currency === 'VND' ? '₫' : p.currency === 'KRW' ? '₩' : p.currency === 'USD' ? '$' : p.currency;
+                return `${p.unit_price.toLocaleString()} ${symbol}`;
+              })()}
+            </Descriptions.Item>
             <Descriptions.Item label={t('items.description')} span={2}>{detailItem.description}</Descriptions.Item>
             <Descriptions.Item label={t('common.createdAt')}>{detailItem.created_at}</Descriptions.Item>
             <Descriptions.Item label={t('common.updatedAt')}>{detailItem.updated_at}</Descriptions.Item>

@@ -9,6 +9,7 @@ export interface InventoryWithItem extends Inventory {
   unit: string;
   reorder_point: number;
   min_stock: number;
+  category_name: string | null;
 }
 
 export interface ReorderAlertWithItem extends ReorderAlert {
@@ -20,7 +21,7 @@ export async function getAllInventory(): Promise<InventoryWithItem[]> {
   const locationId = getOptionalLocationId();
   let query = supabase
     .from('inventory')
-    .select('*, items(item_code, item_name, unit, reorder_point, min_stock)');
+    .select('*, items(item_code, item_name, unit, reorder_point, min_stock, categories(category_name))');
   if (locationId) {
     query = query.eq('location_id', locationId);
   }
@@ -33,7 +34,7 @@ export async function getAllInventory(): Promise<InventoryWithItem[]> {
     throw new Error(i18n.t('errors.inventory.fetchFailed', { message: error.message }));
   }
 
-  return ((data ?? []) as unknown as Array<Inventory & { items: { item_code: string; item_name: string; unit: string; reorder_point: number; min_stock: number } }>)
+  return ((data ?? []) as unknown as Array<Inventory & { items: { item_code: string; item_name: string; unit: string; reorder_point: number; min_stock: number; categories: { category_name: string } | null } }>)
     .map(({ items, ...inv }) => ({
       ...inv,
       item_code: items?.item_code ?? '',
@@ -41,6 +42,7 @@ export async function getAllInventory(): Promise<InventoryWithItem[]> {
       unit: items?.unit ?? '',
       reorder_point: items?.reorder_point ?? 0,
       min_stock: items?.min_stock ?? 0,
+      category_name: items?.categories?.category_name ?? null,
     }))
     .sort((a, b) => a.item_code.localeCompare(b.item_code));
 }
@@ -48,7 +50,7 @@ export async function getAllInventory(): Promise<InventoryWithItem[]> {
 export async function getInventoryByItemId(itemId: string): Promise<InventoryWithItem | null> {
   const { data, error } = await supabase
     .from('inventory')
-    .select('*, items(item_code, item_name, unit, reorder_point, min_stock)')
+    .select('*, items(item_code, item_name, unit, reorder_point, min_stock, categories(category_name))')
     .eq('item_id', itemId)
     .single();
 
@@ -59,7 +61,7 @@ export async function getInventoryByItemId(itemId: string): Promise<InventoryWit
     throw new Error(i18n.t('errors.inventory.getByIdFailed', { message: error.message }));
   }
 
-  const { items, ...inv } = data as unknown as Inventory & { items: { item_code: string; item_name: string; unit: string; reorder_point: number; min_stock: number } };
+  const { items, ...inv } = data as unknown as Inventory & { items: { item_code: string; item_name: string; unit: string; reorder_point: number; min_stock: number; categories: { category_name: string } | null } };
   return {
     ...inv,
     item_code: items?.item_code ?? '',
@@ -67,6 +69,7 @@ export async function getInventoryByItemId(itemId: string): Promise<InventoryWit
     unit: items?.unit ?? '',
     reorder_point: items?.reorder_point ?? 0,
     min_stock: items?.min_stock ?? 0,
+    category_name: items?.categories?.category_name ?? null,
   };
 }
 

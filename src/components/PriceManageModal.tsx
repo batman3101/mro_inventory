@@ -2,12 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button, Table, Tag, Space, Form, InputNumber, Select, DatePicker, Popconfirm,
-  message, Empty,
+  message, Empty, Tooltip,
 } from 'antd';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import dayjs, { Dayjs } from 'dayjs';
 import type { ColumnsType } from 'antd/es/table';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer,
+} from 'recharts';
 import type { Item, ItemPrice, Supplier } from '@/types/database.types';
 import {
   getItemPrices, createItemPrice, updateItemPrice, deleteItemPrice,
@@ -173,6 +176,27 @@ export const PriceManageModal = ({
     return changeMap;
   }, [prices]);
 
+  // Build chart data: pivot prices so each row is one date with one column per
+  // currency. Currencies aren't directly comparable, but rendering them as
+  // separate lines on a shared Y axis still gives a useful trend at a glance
+  // and keeps the modal layout simple. Rows where a currency is missing render
+  // as gaps; `connectNulls` on <Line> joins across them.
+  const { chartData, chartCurrencies } = useMemo(() => {
+    const byDate = new Map<string, Record<string, number | string>>();
+    for (const p of prices) {
+      const row = byDate.get(p.effective_from) ?? { date: p.effective_from };
+      row[p.currency] = p.unit_price;
+      byDate.set(p.effective_from, row);
+    }
+    const data = Array.from(byDate.values()).sort((a, b) =>
+      String(a.date).localeCompare(String(b.date))
+    );
+    const currencies = Array.from(new Set(prices.map((p) => p.currency)));
+    return { chartData: data, chartCurrencies: currencies };
+  }, [prices]);
+
+  const CHART_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+
   const renderChange = (pct: number | null) => {
     if (pct === null) return <span style={{ color: '#ccc' }}>—</span>;
     if (Math.abs(pct) < 0.005) return <span style={{ color: '#888' }}>0.00%</span>;
@@ -248,14 +272,18 @@ export const PriceManageModal = ({
       width: 120,
       render: (_, record) => (
         <Space size="small">
-          <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          <Tooltip title={t('common.edit')}>
+            <Button type="text" size="small" icon={<EditOutlined />} onClick={() => openEdit(record)} />
+          </Tooltip>
           <Popconfirm
             title={t('items.deletePriceConfirm')}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
             onConfirm={() => handleDelete(record.price_id)}
           >
-            <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+            <Tooltip title={t('common.delete')}>
+              <Button type="text" danger size="small" icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
@@ -277,6 +305,51 @@ export const PriceManageModal = ({
             {t('items.addPrice')}
           </Button>
         </div>
+        {prices.length >= 2 && (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
+              {t('items.priceTrend')}
+            </div>
+            <ResponsiveContainer width="100%" height={220}>
+              <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 4 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis
+                  tick={{ fontSize: 11 }}
+                  tickFormatter={(v: number) => v.toLocaleString()}
+                  width={70}
+                />
+                <RechartsTooltip
+                  formatter={(v: number, name: string) =>
+                    [`${v.toLocaleString()} ${currencySymbol(name)}`, name]
+                  }
+                />
+                <Legend wrapperStyle={{ fontSize: 12 }} />
+                {chartCurrencies.map((cur, idx) => (
+                  <Line
+                    key={cur}
+                    type="monotone"
+                    dataKey={cur}
+                    name={cur}
+                    stroke={CHART_COLORS[idx % CHART_COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 3 }}
+                    activeDot={{ r: 5 }}
+                    connectNulls
+                  />
+                ))}
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        {prices.length === 1 && (
+          <div style={{
+            marginBottom: 16, padding: 8, fontSize: 12, color: '#888',
+            background: '#fafafa', border: '1px dashed #e5e5e5', borderRadius: 4, textAlign: 'center',
+          }}>
+            {t('items.priceTrendEmpty')}
+          </div>
+        )}
         {prices.length === 0 && !loading ? (
           <Empty description={t('items.priceHistoryEmpty')} />
         ) : (

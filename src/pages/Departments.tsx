@@ -10,6 +10,7 @@ import {
   message,
   Card,
   Breadcrumb,
+  Tooltip,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
@@ -157,18 +158,22 @@ const Departments = () => {
       fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          <Button
-            type="text"
-            icon={<EditOutlined />}
-            onClick={() => openEditModal(record)}
-          />
+          <Tooltip title={t('common.edit')}>
+            <Button
+              type="text"
+              icon={<EditOutlined />}
+              onClick={() => openEditModal(record)}
+            />
+          </Tooltip>
           <Popconfirm
             title={t('departments.deleteConfirm')}
             okText={t('common.confirm')}
             cancelText={t('common.cancel')}
             onConfirm={() => handleDelete(record.department_id)}
           >
-            <Button type="text" danger icon={<DeleteOutlined />} />
+            <Tooltip title={t('common.delete')}>
+              <Button type="text" danger icon={<DeleteOutlined />} />
+            </Tooltip>
           </Popconfirm>
         </Space>
       ),
