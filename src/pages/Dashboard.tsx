@@ -109,6 +109,43 @@ const Dashboard = () => {
     });
   };
 
+  // Resolves a unit price per item: current managed price (item_prices.is_current)
+  // first, then the most recent inbound unit price as fallback. Set-based to avoid
+  // an N+1 query per outbound row.
+  const resolveUnitPrices = async (itemIds: string[]): Promise<Map<string, number>> => {
+    const priceMap = new Map<string, number>();
+    if (itemIds.length === 0) return priceMap;
+
+    const { data: currentPrices } = await supabase
+      .from('item_prices')
+      .select('item_id, unit_price')
+      .in('item_id', itemIds)
+      .eq('is_current', true);
+
+    for (const row of currentPrices ?? []) {
+      priceMap.set(row.item_id, Number(row.unit_price ?? 0));
+    }
+
+    const missing = itemIds.filter((id) => !priceMap.has(id));
+    if (missing.length > 0) {
+      const { data: inboundPrices } = await supabase
+        .from('inbound')
+        .select('item_id, unit_price, inbound_date')
+        .in('item_id', missing)
+        .order('inbound_date', { ascending: false })
+        .order('created_at', { ascending: false });
+
+      // Rows are newest-first, so the first hit per item is its latest price.
+      for (const row of inboundPrices ?? []) {
+        if (!priceMap.has(row.item_id)) {
+          priceMap.set(row.item_id, Number(row.unit_price ?? 0));
+        }
+      }
+    }
+
+    return priceMap;
+  };
+
   const fetchChartData = async () => {
     const [startDate, endDate] = getDateRange();
 
@@ -120,7 +157,7 @@ const Dashboard = () => {
         .lte('inbound_date', endDate),
       supabase
         .from('outbound')
-        .select('outbound_date, quantity')
+        .select('outbound_date, item_id, quantity')
         .gte('outbound_date', startDate)
         .lte('outbound_date', endDate),
     ]);
@@ -140,10 +177,15 @@ const Dashboard = () => {
       }
     }
 
+    // outbound stores no amount — value each issued line at its item's unit price.
+    const outboundItemIds = [...new Set((outboundRaw ?? []).map((r) => r.item_id))];
+    const unitPriceMap = await resolveUnitPrices(outboundItemIds);
+
     for (const row of outboundRaw ?? []) {
       const key = dayjs(row.outbound_date).format('MM/DD');
       if (dateMap.has(key)) {
-        dateMap.get(key)!.outbound += Number(row.quantity ?? 0);
+        const unitPrice = unitPriceMap.get(row.item_id) ?? 0;
+        dateMap.get(key)!.outbound += Number(row.quantity ?? 0) * unitPrice;
       }
     }
 
