@@ -262,6 +262,8 @@
     "deleteConfirm": "Bạn có chắc muốn xóa phiếu xuất này không?",
     "quantityRequired": "Vui lòng nhập số lượng",
     "requesterRequired": "Vui lòng nhập người yêu cầu",
+    "departmentRequired": "Vui lòng chọn phòng ban",
+    "purposeRequired": "Vui lòng nhập mục đích sử dụng",
     "outboundDateRequired": "Vui lòng chọn ngày xuất kho",
     "newOutbound": "Xuất kho mới",
     "totalQuantity": "Tổng số lượng",
@@ -336,7 +338,15 @@
     "fetchError": "Không thể tải danh sách phòng ban.",
     "departmentCodeRequired": "Vui lòng nhập mã phòng ban",
     "departmentNameRequired": "Vui lòng nhập tên phòng ban",
-    "selectDepartment": "Chọn phòng ban"
+    "selectDepartment": "Chọn phòng ban",
+    "names": {
+      "PROD": "Sản xuất",
+      "QA": "Chất lượng",
+      "SALES": "Kinh doanh",
+      "MT": "MT",
+      "ENG": "ENG",
+      "OFFICE": "Văn phòng"
+    }
   },
   "analytics": {
     "title": "Phân tích",

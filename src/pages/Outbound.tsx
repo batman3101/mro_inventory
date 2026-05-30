@@ -19,19 +19,29 @@ import { supabase } from '@/lib/supabase';
 const { Option } = Select;
 const { RangePicker } = DatePicker;
 
+// 부서 드롭다운/목록 표시 순서: 생산 → 품질 → 영업 → MT → ENG → 사무실.
+// departments 테이블에 sort_order 컬럼이 없어 코드 기준으로 클라이언트에서 고정한다.
+const DEPT_ORDER = ['PROD', 'QA', 'SALES', 'MT', 'ENG', 'OFFICE'];
+const sortDepartments = (depts: Department[]): Department[] => {
+  const rank = (code: string) => {
+    const i = DEPT_ORDER.indexOf(code);
+    return i === -1 ? DEPT_ORDER.length : i;
+  };
+  return [...depts].sort((a, b) => rank(a.department_code) - rank(b.department_code));
+};
+
 interface OutboundFormValues {
   item_id: string;
   quantity: number;
   requester: string;
   department_id: string | null;
   purpose: string;
-  cost_center: string;
   outbound_date: Dayjs;
   notes: string;
 }
 
 const OutboundPage = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { outboundRecords, isLoading, fetchOutbound, createOutbound, updateOutbound, deleteOutbound } =
     useOutboundStore();
 
@@ -58,7 +68,7 @@ const OutboundPage = () => {
     ])
       .then(([fetchedItems, fetchedDepts, { data: locs }]) => {
         setItems(fetchedItems);
-        setDepartments(fetchedDepts);
+        setDepartments(sortDepartments(fetchedDepts));
         setLocations(locs ?? []);
       })
       .catch(() => message.error(t('common.error')));
@@ -104,7 +114,6 @@ const OutboundPage = () => {
         requester: editingRecord.requester,
         department_id: editingRecord.department_id,
         purpose: editingRecord.purpose,
-        cost_center: editingRecord.cost_center,
         outbound_date: dayjs(editingRecord.outbound_date),
         notes: editingRecord.notes,
       });
@@ -155,7 +164,7 @@ const OutboundPage = () => {
           requester: values.requester,
           department_id: values.department_id ?? null,
           purpose: values.purpose ?? '',
-          cost_center: values.cost_center ?? '',
+          cost_center: editingRecord.cost_center ?? '',
           outbound_date: values.outbound_date.format('YYYY-MM-DD'),
           notes: values.notes ?? '',
         }, 'admin');
@@ -166,7 +175,7 @@ const OutboundPage = () => {
           item_id: values.item_id, location_id: selectedLocationId,
           quantity: values.quantity, requester: values.requester,
           department_id: values.department_id ?? null,
-          purpose: values.purpose ?? '', cost_center: values.cost_center ?? '',
+          purpose: values.purpose ?? '', cost_center: '',
           outbound_date: values.outbound_date.format('YYYY-MM-DD'),
           reference_number: '', notes: values.notes ?? '', created_by: '',
         });
@@ -207,10 +216,20 @@ const OutboundPage = () => {
     a.click();
   };
 
+  const deptById = useMemo(
+    () => new Map(departments.map((d) => [d.department_id, d])),
+    [departments]
+  );
+  // 부서 표시명: department_code 기준 i18n 키로 번역, 없으면 저장된 이름 fallback.
+  const deptLabel = (d: Department) => t(`departments.names.${d.department_code}`, d.department_name);
+
   const deptFilters = useMemo(() =>
-    [...new Set(outboundRecords.map((r) => r.department_name).filter(Boolean))]
-      .map((d) => ({ text: d, value: d })),
-    [outboundRecords]
+    [...new Set(outboundRecords.map((r) => r.department_id).filter(Boolean))]
+      .map((id) => {
+        const d = deptById.get(id as string);
+        return { text: d ? deptLabel(d) : (id as string), value: id as string };
+      }),
+    [outboundRecords, deptById, i18n.language] // eslint-disable-line react-hooks/exhaustive-deps
   );
 
   const columns: ColumnsType<Outbound> = [
@@ -220,7 +239,7 @@ const OutboundPage = () => {
     { title: t('items.itemName'), dataIndex: 'item_name', key: 'item_name', width: 160, sorter: (a, b) => a.item_name.localeCompare(b.item_name) },
     { title: t('outbound.quantity'), dataIndex: 'quantity', key: 'quantity', width: 90, align: 'right', sorter: (a, b) => a.quantity - b.quantity, render: (qty: number, r) => `${qty} ${r.item_unit}` },
     { title: t('outbound.requester'), dataIndex: 'requester', key: 'requester', width: 110, sorter: (a, b) => a.requester.localeCompare(b.requester) },
-    { title: t('outbound.department'), dataIndex: 'department_name', key: 'department_name', width: 130, filters: deptFilters, onFilter: (v, r) => r.department_name === v },
+    { title: t('outbound.department'), key: 'department_name', width: 130, filters: deptFilters, onFilter: (v, r) => r.department_id === v, render: (_, r) => { const d = r.department_id ? deptById.get(r.department_id) : null; return d ? deptLabel(d) : (r.department_name || ''); } },
     { title: t('outbound.purpose'), dataIndex: 'purpose', key: 'purpose', width: 150, ellipsis: true },
     {
       title: t('common.actions'), key: 'actions', width: 110, fixed: 'right',
@@ -317,14 +336,13 @@ const OutboundPage = () => {
             <Input />
           </Form.Item>
 
-          <Form.Item name="department_id" label={t('outbound.department')}>
-            <Select placeholder={t('departments.selectDepartment')} allowClear>
-              {departments.map((d) => <Option key={d.department_id} value={d.department_id}>{d.department_name}</Option>)}
+          <Form.Item name="department_id" label={t('outbound.department')} rules={[{ required: true, message: t('outbound.departmentRequired') }]}>
+            <Select placeholder={t('departments.selectDepartment')}>
+              {departments.map((d) => <Option key={d.department_id} value={d.department_id}>{deptLabel(d)}</Option>)}
             </Select>
           </Form.Item>
 
-          <Form.Item name="purpose" label={t('outbound.purpose')}><Input /></Form.Item>
-          <Form.Item name="cost_center" label={t('outbound.costCenter')}><Input /></Form.Item>
+          <Form.Item name="purpose" label={t('outbound.purpose')} rules={[{ required: true, message: t('outbound.purposeRequired') }]}><Input /></Form.Item>
 
           <Form.Item name="outbound_date" label={t('outbound.outboundDate')} rules={[{ required: true, message: t('outbound.outboundDateRequired') }]}>
             <DatePicker style={{ width: '100%' }} />

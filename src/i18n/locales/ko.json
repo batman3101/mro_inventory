@@ -262,6 +262,8 @@
     "deleteConfirm": "이 출고 기록을 삭제하시겠습니까?",
     "quantityRequired": "수량을 입력하세요",
     "requesterRequired": "요청자를 입력하세요",
+    "departmentRequired": "부서를 선택하세요",
+    "purposeRequired": "사용 목적을 입력하세요",
     "outboundDateRequired": "출고일을 선택하세요",
     "newOutbound": "새 출고",
     "totalQuantity": "총 수량",
@@ -336,7 +338,15 @@
     "fetchError": "부서 목록을 불러오지 못했습니다.",
     "departmentCodeRequired": "부서코드를 입력하세요",
     "departmentNameRequired": "부서명을 입력하세요",
-    "selectDepartment": "부서 선택"
+    "selectDepartment": "부서 선택",
+    "names": {
+      "PROD": "생산",
+      "QA": "품질",
+      "SALES": "영업",
+      "MT": "MT",
+      "ENG": "ENG",
+      "OFFICE": "사무실"
+    }
   },
   "analytics": {
     "title": "분석",
