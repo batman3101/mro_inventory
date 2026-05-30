@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Row, Col, Card, DatePicker, Typography, Space } from 'antd';
+import { Row, Col, Card, DatePicker, Typography, Space, message } from 'antd';
 import {
   BarChart,
   Bar,
@@ -17,6 +17,7 @@ import {
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { getOptionalLocationId } from '@/services/locationContext';
 import dayjs, { Dayjs } from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -45,40 +46,42 @@ const Analytics = () => {
     setLoading(true);
     const startDate = start.format('YYYY-MM-DD');
     const endDate = end.format('YYYY-MM-DD');
+    const locationId = getOptionalLocationId();
 
     try {
+      // department_name / item_name / supplier_name are NOT columns on the base
+      // tables — they live on departments/items/suppliers and must be embedded
+      // via PostgREST joins, mirroring outbound/inbound.service.ts.
+      let outboundQuery = supabase
+        .from('outbound')
+        .select('quantity, outbound_date, items(item_name), departments(department_name)')
+        .gte('outbound_date', startDate)
+        .lte('outbound_date', endDate);
+      let inboundQuery = supabase
+        .from('inbound')
+        .select('quantity, total_price, inbound_date, suppliers(supplier_name)')
+        .gte('inbound_date', startDate)
+        .lte('inbound_date', endDate);
+      if (locationId) {
+        outboundQuery = outboundQuery.eq('location_id', locationId);
+        inboundQuery = inboundQuery.eq('location_id', locationId);
+      }
+
       const [
-        { data: outboundRaw },
-        { data: inboundRaw },
-        { data: inboundMonthRaw },
-        { data: outboundMonthRaw },
-      ] = await Promise.all([
-        supabase
-          .from('outbound')
-          .select('department_name, quantity, item_name')
-          .gte('outbound_date', startDate)
-          .lte('outbound_date', endDate),
-        supabase
-          .from('inbound')
-          .select('supplier_name, total_price, inbound_date')
-          .gte('inbound_date', startDate)
-          .lte('inbound_date', endDate),
-        supabase
-          .from('inbound')
-          .select('inbound_date, quantity')
-          .gte('inbound_date', startDate)
-          .lte('inbound_date', endDate),
-        supabase
-          .from('outbound')
-          .select('outbound_date, quantity')
-          .gte('outbound_date', startDate)
-          .lte('outbound_date', endDate),
-      ]);
+        { data: outboundRaw, error: outboundError },
+        { data: inboundRaw, error: inboundError },
+      ] = await Promise.all([outboundQuery, inboundQuery]);
+
+      if (outboundError) throw outboundError;
+      if (inboundError) throw inboundError;
+
+      const outboundRows = (outboundRaw ?? []) as any[];
+      const inboundRows = (inboundRaw ?? []) as any[];
 
       // Department consumption
       const deptMap = new Map<string, number>();
-      for (const row of outboundRaw ?? []) {
-        const name = row.department_name || t('common.unassigned');
+      for (const row of outboundRows) {
+        const name = row.departments?.department_name || t('common.unassigned');
         deptMap.set(name, (deptMap.get(name) ?? 0) + (row.quantity ?? 0));
       }
       setDeptData(
@@ -94,13 +97,13 @@ const Analytics = () => {
         const m = end.subtract(i, 'month').format('YYYY-MM');
         monthMap.set(m, { inbound: 0, outbound: 0 });
       }
-      for (const row of inboundMonthRaw ?? []) {
+      for (const row of inboundRows) {
         const m = dayjs(row.inbound_date).format('YYYY-MM');
         if (monthMap.has(m)) {
           monthMap.get(m)!.inbound += row.quantity ?? 0;
         }
       }
-      for (const row of outboundMonthRaw ?? []) {
+      for (const row of outboundRows) {
         const m = dayjs(row.outbound_date).format('YYYY-MM');
         if (monthMap.has(m)) {
           monthMap.get(m)!.outbound += row.quantity ?? 0;
@@ -112,8 +115,8 @@ const Analytics = () => {
 
       // Supplier cost
       const supplierMap = new Map<string, number>();
-      for (const row of inboundRaw ?? []) {
-        const name = row.supplier_name || t('common.unassigned');
+      for (const row of inboundRows) {
+        const name = row.suppliers?.supplier_name || t('common.unassigned');
         supplierMap.set(name, (supplierMap.get(name) ?? 0) + (row.total_price ?? 0));
       }
       setSupplierData(
@@ -125,8 +128,8 @@ const Analytics = () => {
 
       // Top 10 items by outbound quantity
       const itemMap = new Map<string, number>();
-      for (const row of outboundRaw ?? []) {
-        const name = row.item_name || t('common.unassigned');
+      for (const row of outboundRows) {
+        const name = row.items?.item_name || t('common.unassigned');
         itemMap.set(name, (itemMap.get(name) ?? 0) + (row.quantity ?? 0));
       }
       setTopItems(
@@ -137,6 +140,7 @@ const Analytics = () => {
       );
     } catch (error) {
       console.error('Analytics fetch error:', error);
+      message.error(t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -234,11 +238,11 @@ const Analytics = () => {
               <BarChart
                 data={topItems}
                 layout="vertical"
-                margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
+                margin={{ top: 5, right: 30, left: 8, bottom: 5 }}
               >
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis type="number" />
-                <YAxis dataKey="item_name" type="category" tick={{ fontSize: 11 }} width={80} />
+                <YAxis dataKey="item_name" type="category" tick={{ fontSize: 11 }} width={150} interval={0} />
                 <Tooltip />
                 <Bar dataKey="quantity" name={t('analytics.outboundQty')} fill={COLORS[4]}>
                   {topItems.map((_, index) => (
