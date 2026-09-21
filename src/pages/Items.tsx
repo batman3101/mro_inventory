@@ -349,7 +349,7 @@ const Items = () => {
       for (let i = 0; i < rows.length; i++) {
         const rowNum = i + 2;
         const parsed = parseItemRow(rows[i]);
-        if (!parsed.ok) {
+        if (parsed.ok === false) {
           errors.push(t('items.bulkErrorRow', { row: rowNum, msg: parsed.error }));
           continue;
         }

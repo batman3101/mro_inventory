@@ -9,7 +9,6 @@ import {
   Row,
   Col,
   Statistic,
-  Modal,
   Form,
   InputNumber,
   Upload,
@@ -172,7 +171,7 @@ const Inventory = () => {
       for (let i = 0; i < parsedRows.length; i++) {
         const rowNum = i + 2;
         const parsed = parsedRows[i];
-        if (!parsed.ok) {
+        if (parsed.ok === false) {
           errors.push(t('inventory.bulkErrorRow', { row: rowNum, msg: parsed.error }));
           continue;
         }
