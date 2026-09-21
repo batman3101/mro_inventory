@@ -445,6 +445,7 @@
       "fetchFailed": "Tải danh sách nhà cung cấp thất bại: {{message}}",
       "getByIdFailed": "Tải nhà cung cấp thất bại: {{message}}",
       "createFailed": "Tạo nhà cung cấp thất bại: {{message}}",
+      "autoCodeFailed": "Tạo mã nhà cung cấp tự động thất bại. Vui lòng thử lại sau.",
       "updateFailed": "Cập nhật nhà cung cấp thất bại: {{message}}",
       "deleteFailed": "Xóa nhà cung cấp thất bại: {{message}}",
       "listFallback": "Tải danh sách nhà cung cấp thất bại"

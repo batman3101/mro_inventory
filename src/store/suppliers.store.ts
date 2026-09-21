@@ -9,6 +9,7 @@ interface SuppliersState {
   error: string | null;
   fetchSuppliers: () => Promise<void>;
   createSupplier: (data: Parameters<typeof suppliersService.createSupplier>[0]) => Promise<Supplier>;
+  createSupplierWithAutoCode: (data: Parameters<typeof suppliersService.createSupplierWithAutoCode>[0]) => Promise<Supplier>;
   updateSupplier: (supplierId: string, data: Partial<Supplier>) => Promise<void>;
   deleteSupplier: (supplierId: string) => Promise<void>;
 }
@@ -31,6 +32,12 @@ export const useSupplierStore = create<SuppliersState>((set) => ({
 
   createSupplier: async (data) => {
     const created = await suppliersService.createSupplier(data);
+    set((state) => ({ suppliers: [...state.suppliers, created] }));
+    return created;
+  },
+
+  createSupplierWithAutoCode: async (data) => {
+    const created = await suppliersService.createSupplierWithAutoCode(data);
     set((state) => ({ suppliers: [...state.suppliers, created] }));
     return created;
   },

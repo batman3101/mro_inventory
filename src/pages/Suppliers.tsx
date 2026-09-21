@@ -4,7 +4,6 @@ import {
   Button,
   Input,
   Select,
-  Modal,
   Form,
   Tag,
   Space,
@@ -47,8 +46,9 @@ interface SupplierFormValues {
 
 const Suppliers = () => {
   const { t } = useTranslation();
-  const { suppliers, isLoading, fetchSuppliers, createSupplier, updateSupplier, deleteSupplier } =
-    useSupplierStore();
+  const {
+    suppliers, isLoading, fetchSuppliers, createSupplier, createSupplierWithAutoCode, updateSupplier, deleteSupplier,
+  } = useSupplierStore();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
@@ -77,7 +77,7 @@ const Suppliers = () => {
       for (let i = 0; i < rows.length; i++) {
         const rowNum = i + 2;
         const parsed = parseSupplierRow(rows[i]);
-        if (!parsed.ok) {
+        if (parsed.ok === false) {
           errors.push(t('suppliers.bulkErrorRow', { row: rowNum, msg: parsed.error }));
           continue;
         }
@@ -187,8 +187,9 @@ const Suppliers = () => {
         await updateSupplier(editingSupplier.supplier_id, values);
         message.success(t('suppliers.updateSuccess'));
       } else {
-        await createSupplier({
-          supplier_code: '',
+        const locationId = getOptionalLocationId();
+        if (!locationId) throw new Error(t('errors.location.notSelected'));
+        await createSupplierWithAutoCode({
           supplier_name: values.supplier_name,
           contact_person: values.contact_person ?? '',
           email: values.email ?? '',
@@ -197,7 +198,7 @@ const Suppliers = () => {
           country: values.country ?? '',
           website: values.website ?? '',
           status: values.status ?? 'ACTIVE',
-          location_id: '',
+          location_id: locationId,
           created_by: '',
         });
         message.success(t('suppliers.createSuccess'));
