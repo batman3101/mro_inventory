@@ -43,6 +43,7 @@
 - 로그인은 **Supabase Auth** (`supabase.auth.signInWithPassword`). `users.auth_user_id` 로 앱 프로필과 연결. 비밀번호는 `auth.users` 에 있고 `users.password_hash` 는 더 이상 쓰지 않는다.
 - 권한은 **DB RLS 가 강제**한다 (`private.*` 헬퍼, `app_*` 정책). 화면 숨김은 편의일 뿐 보안이 아니다.
   - `users.location_id` 지정 → 그 공장만, NULL → 전 공장 / `viewer` 읽기 전용 / 사용자 관리는 `system_admin` 만.
+- 회원가입(`/signup`)은 관리자 승인제: `auth.users` INSERT 트리거(`private.handle_new_auth_user`)가 비활성 viewer 프로필을 만든다. 같은 이메일 프로필이 있으면 연결하지 않는다. `/api/users` 생성은 이 자리 프로필을 `auth_user_id` 기준 upsert 로 덮어쓴다 (GoTrue 는 app_metadata 를 INSERT 뒤에 쓰므로 메타데이터로 구분 불가).
 - `users` 테이블 쓰기는 클라이언트에서 불가. 생성·수정·비밀번호·삭제는 `/api/users*` (서버가 `api/_lib/auth.js` 로 system_admin 검증) 경유.
   `server/index.js` 는 `api/` 핸들러를 그대로 재사용한다 — 서버 쪽에 API 로직을 따로 쓰지 말 것.
 - 재고가 바뀌는 입출고 생성·수정·삭제, 단가 저장은 **RPC 로만** (`create_*_atomic`, `update_*_atomic`, `delete_*_atomic`, `save_item_price`). 클라이언트에서 조회→계산→절대값 UPDATE 금지.
