@@ -2,9 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button, Select, Form, Space, Popconfirm, message,
-  Card, Col, Row, Statistic, Input, InputNumber, DatePicker, Tooltip, Typography,
+  Card, Input, InputNumber, DatePicker, Tooltip,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
+import PageHeader from '@/components/PageHeader';
+import StatCard from '@/components/StatCard';
 import { PlusOutlined, DeleteOutlined, EditOutlined, ReloadOutlined, FileExcelOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
@@ -196,11 +198,11 @@ const InboundPage = () => {
       render: (_, record) => (
         <Space size="small">
           <Tooltip title={t('common.edit')}>
-            <Button type="link" icon={<EditOutlined />} onClick={() => openEditModal(record)} style={{ color: '#1677ff', padding: 0 }} />
+            <Button type="text" icon={<EditOutlined />} onClick={() => openEditModal(record)} />
           </Tooltip>
           <Popconfirm title={t('inbound.deleteConfirm')} okText={t('common.confirm')} cancelText={t('common.cancel')} onConfirm={() => handleDelete(record.inbound_id)}>
             <Tooltip title={t('common.delete')}>
-              <Button type="link" danger icon={<DeleteOutlined />} style={{ padding: 0 }} />
+              <Button type="text" danger icon={<DeleteOutlined />} />
             </Tooltip>
           </Popconfirm>
         </Space>
@@ -209,31 +211,24 @@ const InboundPage = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <Typography.Title level={3} style={{ margin: 0 }}>{t('inbound.title')}</Typography.Title>
+    <div>
+      <PageHeader title={t('inbound.title')}>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>{t('inbound.newInbound')}</Button>
+      </PageHeader>
+
+      <div className="stats">
+        <StatCard label={t('inbound.totalQuantity')} value={stats.totalQuantity} />
+        <StatCard label={t('inbound.totalCount')} value={stats.totalCount} />
+        <StatCard label={t('inbound.totalAmount')} value={stats.totalAmount} suffix="₫" />
       </div>
 
-      <Row gutter={16} style={{ marginBottom: 16 }}>
-        <Col span={8}>
-          <Card><Statistic title={t('inbound.totalQuantity')} value={stats.totalQuantity} /></Card>
-        </Col>
-        <Col span={8}>
-          <Card><Statistic title={t('inbound.totalCount')} value={stats.totalCount} valueStyle={{ color: '#3f8600' }} /></Card>
-        </Col>
-        <Col span={8}>
-          <Card><Statistic title={t('inbound.totalAmount')} value={stats.totalAmount.toLocaleString()} suffix="₫" valueStyle={{ color: '#3f8600' }} /></Card>
-        </Col>
-      </Row>
-
       <Card>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
-          <Input placeholder={t('inbound.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: 260 }} allowClear />
+        <div className="toolbar">
+          <Input placeholder={t('inbound.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-search" allowClear />
           <RangePicker value={dateRange[0] || dateRange[1] ? [dateRange[0], dateRange[1]] : null} onChange={handleDateRangeChange} placeholder={[t('inbound.startDate'), t('inbound.endDate')]} />
           <Button icon={<ReloadOutlined />} onClick={handleResetFilter}>{t('inbound.resetFilter')}</Button>
-          <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#666' }}>{t('common.total', { count: filteredRecords.length })}</span>
+          <div className="right">
+            <span className="count">{t('common.total', { count: filteredRecords.length })}</span>
             <Button icon={<FileExcelOutlined />}>{t('inbound.exportExcel')}</Button>
           </div>
         </div>
@@ -250,14 +245,12 @@ const InboundPage = () => {
         okText={t('common.save')} cancelText={t('common.cancel')}
         confirmLoading={submitting} width={560} destroyOnHidden
       >
-        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }} onValuesChange={handleValuesChange}
+        <Form form={form} layout="vertical" preserve={false} onValuesChange={handleValuesChange}
           initialValues={formInitialValues}>
           {!editingRecord && (
-            <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>{t('inbound.referenceNumber')}</div>
-              <div style={{ padding: '8px 12px', background: '#f5f5f5', borderRadius: 6, fontWeight: 600 }}>
-                {t('inbound.autoGenerated')}
-              </div>
+            <div className="readonly-field page-gap">
+              <div className="k">{t('inbound.referenceNumber')}</div>
+              <div className="v">{t('inbound.autoGenerated')}</div>
             </div>
           )}
           <Form.Item name="item_id" label={t('inbound.itemLabel')} rules={[{ required: true, message: t('inbound.selectItemMessage') }]}>
@@ -269,14 +262,14 @@ const InboundPage = () => {
               options={suppliers.map((s) => ({ value: s.supplier_id, label: s.supplier_name }))} />
           </Form.Item>
           <Form.Item name="inbound_date" label={t('inbound.inboundDate')} rules={[{ required: true, message: t('inbound.selectDateMessage') }]}>
-            <DatePicker style={{ width: '100%' }} />
+            <DatePicker className="fill" />
           </Form.Item>
           <Form.Item name="quantity" label={t('inbound.quantity')} rules={[{ required: true, message: t('inbound.enterQuantityMessage') }]}>
-            <InputNumber min={1} style={{ width: '100%' }} />
+            <InputNumber min={1} className="fill" />
           </Form.Item>
           <Form.Item name="unit_price" label={t('inbound.unitPrice')} rules={[{ required: true, message: t('inbound.enterUnitPriceMessage') }]}>
             <InputNumber
-              min={0} style={{ width: '100%' }}
+              min={0} className="fill"
               formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
               addonAfter={CURRENCY_SYMBOL[watchedCurrency as string] ?? '₫'}
             />

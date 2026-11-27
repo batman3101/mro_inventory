@@ -2,9 +2,11 @@ import { useState, useEffect, useMemo } from 'react';
 import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button, Input, Select, Form, Space, Popconfirm,
-  message, Card, Row, Col, Statistic, InputNumber, DatePicker, Alert, Typography,
+  message, Card, InputNumber, DatePicker, Alert,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
+import PageHeader from '@/components/PageHeader';
+import StatCard from '@/components/StatCard';
 import { PlusOutlined, SearchOutlined, ReloadOutlined, DownloadOutlined } from '@ant-design/icons';
 import dayjs, { type Dayjs } from 'dayjs';
 import { useTranslation } from 'react-i18next';
@@ -245,11 +247,11 @@ const OutboundPage = () => {
       title: t('common.actions'), key: 'actions', width: 110, fixed: 'right',
       render: (_, record) => (
         <Space size="small">
-          <Button type="link" style={{ padding: 0 }} onClick={() => openEditModal(record)}>
+          <Button type="link" onClick={() => openEditModal(record)}>
             {t('common.edit')}
           </Button>
           <Popconfirm title={t('outbound.deleteConfirm')} okText={t('common.confirm')} cancelText={t('common.cancel')} onConfirm={() => handleDelete(record.outbound_id)}>
-            <Button type="link" danger style={{ padding: 0 }}>{t('common.delete')}</Button>
+            <Button type="link" danger>{t('common.delete')}</Button>
           </Popconfirm>
         </Space>
       ),
@@ -259,36 +261,29 @@ const OutboundPage = () => {
   const stockInsufficient = currentStock !== null && watchedQty !== undefined && watchedQty > currentStock;
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Typography.Title level={3} style={{ margin: 0 }}>{t('outbound.title')}</Typography.Title>
+    <div>
+      <PageHeader title={t('outbound.title')}>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
           {t('outbound.newOutbound')}
         </Button>
+      </PageHeader>
+
+      <div className="stats">
+        <StatCard label={t('outbound.totalQuantity')} value={stats.totalQuantity} />
+        <StatCard label={t('outbound.totalCount')} value={stats.totalCount} />
+        <StatCard label={t('outbound.monthlyCount')} value={stats.monthlyCount} />
       </div>
 
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={8}>
-          <Card><Statistic title={t('outbound.totalQuantity')} value={stats.totalQuantity} /></Card>
-        </Col>
-        <Col span={8}>
-          <Card><Statistic title={t('outbound.totalCount')} value={stats.totalCount} valueStyle={{ color: '#1677ff' }} /></Card>
-        </Col>
-        <Col span={8}>
-          <Card><Statistic title={t('outbound.monthlyCount')} value={stats.monthlyCount} valueStyle={{ color: '#52c41a' }} /></Card>
-        </Col>
-      </Row>
-
       <Card>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap', alignItems: 'center' }}>
+        <div className="toolbar">
           <Input prefix={<SearchOutlined />} placeholder={t('outbound.searchPlaceholder')}
-            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: 260 }} allowClear />
-          <RangePicker value={dateRange} onChange={(r) => setDateRange(r as [Dayjs | null, Dayjs | null] | null)} style={{ width: 240 }} />
+            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-search" allowClear />
+          <RangePicker value={dateRange} onChange={(r) => setDateRange(r as [Dayjs | null, Dayjs | null] | null)} />
           <Button icon={<ReloadOutlined />} onClick={() => { setSearchQuery(''); setDateRange(null); }}>
             {t('outbound.resetFilter')}
           </Button>
-          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8, alignItems: 'center' }}>
-            <span style={{ color: '#666' }}>{t('common.total', { count: filteredRecords.length })}</span>
+          <div className="right">
+            <span className="count">{t('common.total', { count: filteredRecords.length })}</span>
             <Button icon={<DownloadOutlined />} onClick={handleExcelExport}>
               Excel {t('common.export')}
             </Button>
@@ -304,7 +299,7 @@ const OutboundPage = () => {
         open={modalOpen} onOk={handleSubmit} onCancel={handleModalCancel}
         okText={t('common.save')} cancelText={t('common.cancel')}
         confirmLoading={submitting} width={600} destroyOnHidden>
-        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}
+        <Form form={form} layout="vertical" preserve={false}
           initialValues={formInitialValues}>
           <Form.Item name="item_id" label={t('outbound.itemSelect')} rules={[{ required: true, message: t('items.itemNameRequired') }]}>
             <Select showSearch placeholder={t('outbound.itemSelect')} optionFilterProp="label"
@@ -320,18 +315,16 @@ const OutboundPage = () => {
           </Form.Item>
 
           {currentStock !== null && (
-            <div style={{ marginBottom: 16 }}>
-              <span style={{ color: currentStock > 0 ? '#52c41a' : '#ff4d4f', fontWeight: 500 }}>
-                {t('outbound.currentStock')}: {currentStock}
-              </span>
+            <div className={currentStock > 0 ? 'page-gap t-ok strong' : 'page-gap t-danger strong'}>
+              {t('outbound.currentStock')}: {currentStock}
             </div>
           )}
 
           <Form.Item name="quantity" label={t('outbound.quantity')} rules={[{ required: true, message: t('outbound.quantityRequired') }]}>
-            <InputNumber min={1} style={{ width: '100%' }} />
+            <InputNumber min={1} className="fill" />
           </Form.Item>
 
-          {stockInsufficient && <Alert type="warning" message={t('outbound.stockWarning')} style={{ marginBottom: 16 }} showIcon />}
+          {stockInsufficient && <Alert type="warning" message={t('outbound.stockWarning')} className="page-gap" showIcon />}
 
           <Form.Item name="requester" label={t('outbound.requester')} rules={[{ required: true, message: t('outbound.requesterRequired') }]}>
             <Input />
@@ -346,7 +339,7 @@ const OutboundPage = () => {
           <Form.Item name="purpose" label={t('outbound.purpose')} rules={[{ required: true, message: t('outbound.purposeRequired') }]}><Input /></Form.Item>
 
           <Form.Item name="outbound_date" label={t('outbound.outboundDate')} rules={[{ required: true, message: t('outbound.outboundDateRequired') }]}>
-            <DatePicker style={{ width: '100%' }} />
+            <DatePicker className="fill" />
           </Form.Item>
 
           <Form.Item name="notes" label={t('inbound.notes')}>

@@ -2,10 +2,12 @@ import { useState, useEffect, useMemo } from 'react';
 import { DraggableModal } from "@/components/DraggableModal";
 import {
   Button, Input, Select, Form, Tag, Space,
-  Popconfirm, message, Card, Row, Col, Descriptions,
-  Upload, Alert, List, Tooltip, Typography,
+  Popconfirm, message, Card, Descriptions,
+  Upload, Alert, List, Tooltip,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
+import PageHeader from '@/components/PageHeader';
+import StatCard from '@/components/StatCard';
 import {
   PlusOutlined, SearchOutlined, DownloadOutlined,
   EditOutlined, DeleteOutlined, EyeOutlined, UploadOutlined,
@@ -55,16 +57,9 @@ const itemFormSchema = z.object({
 
 type ItemFormValues = z.infer<typeof itemFormSchema>;
 
-const StatCard = ({ label, value, color }: { label: string; value: number; color?: string }) => (
-  <Card>
-    <div style={{ fontSize: 13, color: '#888', marginBottom: 4 }}>{label}</div>
-    <div style={{ fontSize: 24, fontWeight: 700, color }}>{value}</div>
-  </Card>
-);
-
 const statusTag = (status: string, t: (k: string) => string) => {
-  if (status === 'ACTIVE') return <Tag color="blue">{t('items.statusNew')}</Tag>;
-  if (status === 'DISCONTINUED') return <Tag color="red">{t('items.discontinued')}</Tag>;
+  if (status === 'ACTIVE') return <Tag color="processing">{t('items.statusNew')}</Tag>;
+  if (status === 'DISCONTINUED') return <Tag color="error">{t('items.discontinued')}</Tag>;
   return <Tag>{t('items.statusOld')}</Tag>;
 };
 
@@ -511,13 +506,13 @@ const Items = () => {
       },
       render: (_, record) => {
         const p = currentPriceMap.get(record.item_id);
-        if (!p) return <span style={{ color: '#aaa', fontStyle: 'italic' }}>{t('items.noPrice')}</span>;
+        if (!p) return <span className="muted">{t('items.noPrice')}</span>;
         const symbol = p.currency === 'VND' ? '₫' : p.currency === 'KRW' ? '₩' : p.currency === 'USD' ? '$' : p.currency;
         return `${p.unit_price.toLocaleString()} ${symbol}`;
       },
     },
     {
-      title: t('common.status'), dataIndex: 'status', key: 'status', width: 90,
+      title: t('common.status'), dataIndex: 'status', key: 'status', width: 130,
       filters: [{ text: t('items.statusNew'), value: 'ACTIVE' }, { text: t('items.statusOld'), value: 'INACTIVE' }, { text: t('items.discontinued'), value: 'DISCONTINUED' }],
       onFilter: (value, record) => record.status === value,
       render: (status: string) => statusTag(status, t),
@@ -559,27 +554,26 @@ const Items = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Typography.Title level={3} style={{ margin: 0 }}>{t('items.title')}</Typography.Title>
-        <Space>
-          <Button icon={<DownloadOutlined />} onClick={downloadItemImportTemplate}>{t('items.itemTemplate')}</Button>
-          <Button icon={<UploadOutlined />} onClick={() => { setBulkResult(null); setBulkOpen(true); }}>{t('items.bulkUpload')}</Button>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>{t('items.addItem')}</Button>
-        </Space>
+    <div>
+      <PageHeader title={t('items.title')}>
+        <Button icon={<DownloadOutlined />} onClick={downloadItemImportTemplate}>{t('items.itemTemplate')}</Button>
+        <Button icon={<UploadOutlined />} onClick={() => { setBulkResult(null); setBulkOpen(true); }}>{t('items.bulkUpload')}</Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>{t('items.addItem')}</Button>
+      </PageHeader>
+
+      <div className="stats">
+        <StatCard label={t('items.totalItems')} value={stats.total} />
+        <StatCard label={t('items.activeItems')} value={stats.active} />
+        <StatCard label={t('items.categories')} value={stats.categories} />
+        <StatCard label={t('items.inactiveItems')} value={stats.inactive} tone={stats.inactive === 0 ? 'ok' : 'danger'} />
       </div>
 
-      <Row gutter={16} style={{ marginBottom: 24 }}>
-        <Col span={6}><StatCard label={t('items.totalItems')} value={stats.total} /></Col>
-        <Col span={6}><StatCard label={t('items.activeItems')} value={stats.active} color="#52c41a" /></Col>
-        <Col span={6}><StatCard label={t('items.categories')} value={stats.categories} color="#1890ff" /></Col>
-        <Col span={6}><StatCard label={t('items.inactiveItems')} value={stats.inactive} color={stats.inactive === 0 ? '#52c41a' : '#ff4d4f'} /></Col>
-      </Row>
-
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
-          <Input prefix={<SearchOutlined />} placeholder={t('items.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} style={{ width: 280 }} allowClear />
-          <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel {t('common.export')}</Button>
+        <div className="toolbar">
+          <Input prefix={<SearchOutlined />} placeholder={t('items.searchPlaceholder')} value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-search" allowClear />
+          <div className="right">
+            <Button icon={<DownloadOutlined />} onClick={handleExport}>Excel {t('common.export')}</Button>
+          </div>
         </div>
         <ResizableTable<Item> rowKey="item_id" columns={columns} dataSource={filteredItems} loading={loading} scroll={{ x: 1200 }}
           pagination={{ pageSize: 20, showSizeChanger: false, showTotal: (total) => t('common.total', { count: total }) }} />
@@ -592,7 +586,6 @@ const Items = () => {
           key={editingItem?.item_id ?? 'new'}
           form={form}
           layout="vertical"
-          style={{ marginTop: 8 }}
           preserve={false}
           initialValues={editInitialValues}
         >
@@ -616,13 +609,13 @@ const Items = () => {
           </Form.Item>
           <Form.Item name="spec" label={t('items.spec')}><Input /></Form.Item>
           <Form.Item name="unit" label={t('items.unit')} rules={[{ required: true, message: t('items.unitRequired') }]}><Input /></Form.Item>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          <div className="grid-form-3">
             <Form.Item name="min_stock" label={t('items.minStock')}><Input type="number" min={0} /></Form.Item>
             <Form.Item name="max_stock" label={t('items.maxStock')}><Input type="number" min={0} /></Form.Item>
             <Form.Item name="reorder_point" label={t('items.reorderPoint')}><Input type="number" min={0} /></Form.Item>
           </div>
           <Form.Item name="storage_location" label={t('items.storageLocation')}><Input /></Form.Item>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
+          <div className="grid-form-21">
             <Form.Item name="unit_price" label={t('items.unitPrice')}>
               <Input type="number" min={0} placeholder="0" />
             </Form.Item>
@@ -649,7 +642,7 @@ const Items = () => {
         footer={<Button onClick={() => setDetailOpen(false)}>{t('common.cancel')}</Button>}
         width={680} destroyOnHidden>
         {detailItem && (
-          <Descriptions column={2} bordered size="small" style={{ marginTop: 8 }}>
+          <Descriptions column={2} bordered size="small">
             <Descriptions.Item label={t('items.itemCode')}>{detailItem.item_code}</Descriptions.Item>
             <Descriptions.Item label={t('items.itemName')}>{detailItem.item_name}</Descriptions.Item>
             <Descriptions.Item label={t('items.koreanName')}>{detailItem.korean_name}</Descriptions.Item>
@@ -665,7 +658,7 @@ const Items = () => {
             <Descriptions.Item label={t('items.recentPrice')} span={2}>
               {(() => {
                 const p = currentPriceMap.get(detailItem.item_id);
-                if (!p) return <span style={{ color: '#aaa', fontStyle: 'italic' }}>{t('items.noPrice')}</span>;
+                if (!p) return <span className="muted">{t('items.noPrice')}</span>;
                 const symbol = p.currency === 'VND' ? '₫' : p.currency === 'KRW' ? '₩' : p.currency === 'USD' ? '$' : p.currency;
                 return `${p.unit_price.toLocaleString()} ${symbol}`;
               })()}
@@ -685,7 +678,7 @@ const Items = () => {
         width={680}
         destroyOnHidden
       >
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <div className="stack">
           <Alert type="info" showIcon message={t('items.bulkHelp')} />
 
           <Upload.Dragger
@@ -722,11 +715,11 @@ const Items = () => {
                 <List
                   size="small"
                   bordered
-                  header={<strong style={{ color: '#ff4d4f' }}>{t('items.bulkErrorsHeader')}</strong>}
+                  header={<strong className="t-danger">{t('items.bulkErrorsHeader')}</strong>}
                   dataSource={bulkResult.errors}
-                  style={{ maxHeight: 200, overflowY: 'auto' }}
+                  className="scroll-list"
                   renderItem={(item) => (
-                    <List.Item style={{ color: '#ff4d4f' }}>{item}</List.Item>
+                    <List.Item className="t-danger">{item}</List.Item>
                   )}
                 />
               )}
@@ -734,17 +727,17 @@ const Items = () => {
                 <List
                   size="small"
                   bordered
-                  header={<strong style={{ color: '#faad14' }}>{t('items.bulkWarningsHeader')}</strong>}
+                  header={<strong className="t-warn">{t('items.bulkWarningsHeader')}</strong>}
                   dataSource={bulkResult.warnings}
-                  style={{ maxHeight: 200, overflowY: 'auto' }}
+                  className="scroll-list"
                   renderItem={(item) => (
-                    <List.Item style={{ color: '#faad14' }}>{item}</List.Item>
+                    <List.Item className="t-warn">{item}</List.Item>
                   )}
                 />
               )}
             </>
           )}
-        </Space>
+        </div>
       </DraggableModal>
 
       <PriceManageModal

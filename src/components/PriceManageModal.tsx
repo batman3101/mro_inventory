@@ -15,6 +15,7 @@ import type { Item, ItemPrice, Supplier } from '@/types/database.types';
 import {
   getItemPrices, saveItemPrice, deleteItemPrice,
 } from '@/services/itemPrice.service';
+import { useChartTheme } from '@/components/chartTheme';
 
 const { Option } = Select;
 
@@ -46,6 +47,7 @@ export const PriceManageModal = ({
   open, item, suppliers, locationId, onClose, onChange,
 }: Props) => {
   const { t } = useTranslation();
+  const chart = useChartTheme();
   const [prices, setPrices] = useState<ItemPrice[]>([]);
   const [loading, setLoading] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
@@ -190,15 +192,13 @@ export const PriceManageModal = ({
     return { chartData: data, chartCurrencies: currencies };
   }, [prices]);
 
-  const CHART_COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
-
   const renderChange = (pct: number | null) => {
-    if (pct === null) return <span style={{ color: '#ccc' }}>—</span>;
-    if (Math.abs(pct) < 0.005) return <span style={{ color: '#888' }}>0.00%</span>;
+    if (pct === null) return <span className="muted">—</span>;
+    if (Math.abs(pct) < 0.005) return <span className="muted">0.00%</span>;
     const positive = pct > 0;
     const text = `${positive ? '+' : ''}${pct.toFixed(2)}%`;
-    const color = positive ? '#ef4444' : '#10b981'; // red rise / green drop (price)
-    return <span style={{ color, fontWeight: 600 }}>{text}</span>;
+    // a price that went up reads as a warning, one that went down as good
+    return <span className={positive ? 't-danger strong' : 't-ok strong'}>{text}</span>;
   };
 
   const currencyFilters = useMemo(() => {
@@ -252,14 +252,14 @@ export const PriceManageModal = ({
       width: 160,
       render: (id: string | null) =>
         id ? supplierMap.get(id) ?? id :
-          <span style={{ color: '#aaa' }}>{t('items.priceNoSupplier')}</span>,
+          <span className="muted">{t('items.priceNoSupplier')}</span>,
     },
     {
       title: t('common.status'),
       dataIndex: 'is_current',
       key: 'is_current',
-      width: 80,
-      render: (v: boolean) => v ? <Tag color="green">{t('items.priceCurrent')}</Tag> : null,
+      width: 100,
+      render: (v: boolean) => v ? <Tag color="success">{t('items.priceCurrent')}</Tag> : null,
     },
     {
       title: t('common.actions'),
@@ -295,38 +295,39 @@ export const PriceManageModal = ({
         width={760}
         destroyOnHidden
       >
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>
-            {t('items.addPrice')}
-          </Button>
+        <div className="toolbar">
+          <div className="right">
+            <Button type="primary" icon={<PlusOutlined />} onClick={openAdd}>
+              {t('items.addPrice')}
+            </Button>
+          </div>
         </div>
         {prices.length >= 2 && (
-          <div style={{ marginBottom: 16 }}>
-            <div style={{ fontSize: 13, color: '#666', marginBottom: 8, fontWeight: 500 }}>
-              {t('items.priceTrend')}
-            </div>
+          <div className="page-gap">
+            <h3 className="h-sec">{t('items.priceTrend')}</h3>
             <ResponsiveContainer width="100%" height={220}>
               <LineChart data={chartData} margin={{ top: 8, right: 16, left: 8, bottom: 4 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
-                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <CartesianGrid {...chart.grid} />
+                <XAxis dataKey="date" {...chart.axis} />
                 <YAxis
-                  tick={{ fontSize: 11 }}
+                  {...chart.axis}
                   tickFormatter={(v: number) => v.toLocaleString()}
                   width={70}
                 />
                 <RechartsTooltip
+                  {...chart.tooltip}
                   formatter={(v: number, name: string) =>
                     [`${v.toLocaleString()} ${currencySymbol(name)}`, name]
                   }
                 />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Legend formatter={(value) => <span style={chart.legendText}>{value}</span>} />
                 {chartCurrencies.map((cur, idx) => (
                   <Line
                     key={cur}
                     type="monotone"
                     dataKey={cur}
                     name={cur}
-                    stroke={CHART_COLORS[idx % CHART_COLORS.length]}
+                    stroke={chart.series[idx % chart.series.length]}
                     strokeWidth={2}
                     dot={{ r: 3 }}
                     activeDot={{ r: 5 }}
@@ -338,10 +339,7 @@ export const PriceManageModal = ({
           </div>
         )}
         {prices.length === 1 && (
-          <div style={{
-            marginBottom: 16, padding: 8, fontSize: 12, color: '#888',
-            background: '#fafafa', border: '1px dashed #e5e5e5', borderRadius: 4, textAlign: 'center',
-          }}>
+          <div className="note page-gap">
             {t('items.priceTrendEmpty')}
           </div>
         )}
@@ -370,14 +368,14 @@ export const PriceManageModal = ({
         width={520}
         destroyOnHidden
       >
-        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 8 }}>
+        <Form form={form} layout="vertical" preserve={false}>
+          <div className="grid-form-21">
             <Form.Item
               name="unit_price"
               label={t('items.unitPrice')}
               rules={[{ required: true, message: t('items.priceRequired') }]}
             >
-              <InputNumber min={0} style={{ width: '100%' }} />
+              <InputNumber min={0} className="fill" />
             </Form.Item>
             <Form.Item name="currency" label={t('items.currency')}>
               <Select>
@@ -404,7 +402,7 @@ export const PriceManageModal = ({
             label={t('items.effectiveFrom')}
             rules={[{ required: true, message: t('items.priceEffectiveRequired') }]}
           >
-            <DatePicker style={{ width: '100%' }} />
+            <DatePicker className="fill" />
           </Form.Item>
           <Form.Item name="is_current" label={t('items.priceCurrent')}>
             <Select>
