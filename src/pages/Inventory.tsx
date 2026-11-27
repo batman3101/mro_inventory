@@ -6,19 +6,16 @@ import {
   Tag,
   Button,
   Dropdown,
-  Row,
-  Col,
-  Statistic,
   Form,
   InputNumber,
   Upload,
   Alert,
   List,
-  Space,
   message,
-  Typography,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
+import PageHeader from '@/components/PageHeader';
+import StatCard from '@/components/StatCard';
 import {
   SearchOutlined,
   UploadOutlined,
@@ -246,8 +243,8 @@ const Inventory = () => {
       render: (qty: number, record) => {
         if (qty === 0 || qty < record.min_stock) {
           return (
-            <span style={{ color: '#ef4444', fontWeight: 600 }}>
-              {qty} <WarningOutlined style={{ fontSize: 12 }} />
+            <span className="t-danger strong">
+              {qty} <WarningOutlined className="small" />
             </span>
           );
         }
@@ -274,7 +271,7 @@ const Inventory = () => {
       dataIndex: 'storage_location',
       key: 'storage_location',
       width: 90,
-      render: (val: string) => <Tag color="blue">{val || 'main'}</Tag>,
+      render: (val: string) => <Tag>{val || 'main'}</Tag>,
       sorter: (a, b) => (a.storage_location ?? '').localeCompare(b.storage_location ?? ''),
     },
     {
@@ -303,58 +300,34 @@ const Inventory = () => {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Typography.Title level={3} style={{ marginBottom: 16 }}>{t('inventory.listTitle')}</Typography.Title>
+    <div>
+      <PageHeader title={t('inventory.listTitle')} />
 
-      {/* Summary Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic title={t('inventory.totalItems')} value={stats.totalItems} />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title={t('inventory.totalQuantity')}
-              value={stats.totalQuantity.toLocaleString()}
-              valueStyle={{ color: '#2563eb' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title={t('inventory.lowStockItems')}
-              value={stats.lowStockCount}
-              valueStyle={{ color: stats.lowStockCount > 0 ? '#ef4444' : '#10b981' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title={t('inventory.storageLocations')}
-              value={stats.locationCount}
-              valueStyle={{ color: '#8b5cf6' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {/* Summary: colour only where the number is a warning */}
+      <div className="stats">
+        <StatCard label={t('inventory.totalItems')} value={stats.totalItems} />
+        <StatCard label={t('inventory.totalQuantity')} value={stats.totalQuantity} />
+        <StatCard
+          label={t('inventory.lowStockItems')}
+          value={stats.lowStockCount}
+          tone={stats.lowStockCount > 0 ? 'danger' : 'ok'}
+        />
+        <StatCard label={t('inventory.storageLocations')} value={stats.locationCount} />
+      </div>
 
       {/* Table */}
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
+        <div className="toolbar">
           <Input
             prefix={<SearchOutlined />}
             placeholder={t('inventory.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 220 }}
+            className="w-search"
             allowClear
           />
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#666', fontSize: 13 }}>
+          <div className="right">
+            <span className="count">
               {t('common.total', { count: filteredItems.length })}
             </span>
             <Dropdown
@@ -395,7 +368,7 @@ const Inventory = () => {
           scroll={{ x: 1100 }}
           rowClassName={(record) =>
             record.current_quantity === 0 || record.current_quantity < record.min_stock
-              ? 'inventory-low-stock-row'
+              ? 'row-alert'
               : ''
           }
           pagination={{
@@ -418,7 +391,7 @@ const Inventory = () => {
         destroyOnHidden
       >
         {editingItem && (
-          <div style={{ marginBottom: 16 }}>
+          <div className="page-gap">
             <strong>{editingItem.item_code}</strong> — {editingItem.item_name}
           </div>
         )}
@@ -428,7 +401,7 @@ const Inventory = () => {
             label={t('inventory.currentQuantity')}
             rules={[{ required: true, message: t('inventory.quantityRequired') }]}
           >
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <InputNumber min={0} className="fill" />
           </Form.Item>
         </Form>
       </DraggableModal>
@@ -442,7 +415,7 @@ const Inventory = () => {
         width={680}
         destroyOnHidden
       >
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <div className="stack">
           <Alert type="info" showIcon message={t('inventory.bulkHelp')} />
 
           <Upload.Dragger
@@ -477,28 +450,18 @@ const Inventory = () => {
                 <List
                   size="small"
                   bordered
-                  header={<strong style={{ color: '#ff4d4f' }}>{t('inventory.bulkErrorsHeader')}</strong>}
+                  header={<strong className="t-danger">{t('inventory.bulkErrorsHeader')}</strong>}
                   dataSource={bulkResult.errors}
-                  style={{ maxHeight: 200, overflowY: 'auto' }}
+                  className="scroll-list"
                   renderItem={(item) => (
-                    <List.Item style={{ color: '#ff4d4f' }}>{item}</List.Item>
+                    <List.Item className="t-danger">{item}</List.Item>
                   )}
                 />
               )}
             </>
           )}
-        </Space>
+        </div>
       </DraggableModal>
-
-      {/* Row highlight style */}
-      <style>{`
-        .inventory-low-stock-row {
-          background-color: #fff1f0 !important;
-        }
-        .inventory-low-stock-row:hover > td {
-          background-color: #ffe4e1 !important;
-        }
-      `}</style>
     </div>
   );
 };

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Row, Col, Card, Statistic, Select, DatePicker, Typography, Space, Alert } from 'antd';
+import { useEffect, useState, type ReactNode } from 'react';
+import { Card, Select, DatePicker, Typography, Space, Alert } from 'antd';
 import {
   InboxOutlined,
   WarningOutlined,
@@ -22,6 +22,9 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { fetchAllRows } from '@/lib/fetchAll';
 import { getLocationId, getOptionalLocationId } from '@/services/locationContext';
+import PageHeader from '@/components/PageHeader';
+import StatCard from '@/components/StatCard';
+import { useChartTheme } from '@/components/chartTheme';
 import dayjs, { type Dayjs } from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -58,6 +61,7 @@ function checked<R extends { error: { message: string } | null }>(res: R): R {
 
 const Dashboard = () => {
   const { t } = useTranslation();
+  const chart = useChartTheme();
   const [stats, setStats] = useState<SummaryStats>({
     totalStock: 0,
     lowStockCount: 0,
@@ -315,60 +319,62 @@ const Dashboard = () => {
     return t('dashboard.periodCustom');
   };
 
+  const recentList = (records: RecentRecord[], icon: ReactNode, emptyText: string) =>
+    records.length === 0 ? (
+      <Typography.Text type="secondary">{emptyText}</Typography.Text>
+    ) : (
+      <div className="lines">
+        {records.map((record, idx) => (
+          <div key={idx} className="li">
+            {icon}
+            <div className="what">
+              <b>{record.item_code} - {record.item_name}</b>{' '}
+              <span className="sub">({record.quantity} {record.item_unit})</span>
+            </div>
+            <span className="when">{dayjs(record.created_at).format('YYYY-MM-DD HH:mm')}</span>
+          </div>
+        ))}
+      </div>
+    );
+
   return (
-    <div style={{ padding: '24px' }}>
-      <Typography.Title level={3} style={{ marginBottom: '24px' }}>
-        {t('dashboard.title')}
-      </Typography.Title>
+    <div>
+      <PageHeader title={t('dashboard.title')} />
 
       {loadError && (
-        <Alert type="error" showIcon message={t('dashboard.loadFailed')} style={{ marginBottom: 16 }} />
+        <Alert type="error" showIcon message={t('dashboard.loadFailed')} className="page-gap" />
       )}
 
-      {/* Summary Cards */}
-      <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>
-        <Col xs={24} sm={12} lg={6}>
-          <Card loading={loading}>
-            <Statistic
-              title={t('dashboard.totalStock')}
-              value={stats.totalStock}
-              prefix={<InboxOutlined />}
-              suffix={t('dashboard.unitSuffix')}
-              valueStyle={{ color: '#2563eb' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card loading={loading}>
-            <Statistic
-              title={t('dashboard.lowStock')}
-              value={stats.lowStockCount}
-              prefix={<WarningOutlined />}
-              valueStyle={{ color: stats.lowStockCount > 0 ? '#f59e0b' : '#10b981' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card loading={loading}>
-            <Statistic
-              title={t('dashboard.zeroStock')}
-              value={stats.zeroStockCount}
-              prefix={<CloseCircleOutlined />}
-              valueStyle={{ color: stats.zeroStockCount > 0 ? '#ef4444' : '#10b981' }}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card loading={loading}>
-            <Statistic
-              title={t('dashboard.totalSuppliers')}
-              value={stats.totalSuppliers}
-              prefix={<TeamOutlined />}
-              valueStyle={{ color: '#8b5cf6' }}
-            />
-          </Card>
-        </Col>
-      </Row>
+      {/* Summary: colour only where the number is a warning */}
+      <div className="stats">
+        <StatCard
+          loading={loading}
+          label={t('dashboard.totalStock')}
+          value={stats.totalStock}
+          icon={<InboxOutlined />}
+          suffix={t('dashboard.unitSuffix')}
+        />
+        <StatCard
+          loading={loading}
+          label={t('dashboard.lowStock')}
+          value={stats.lowStockCount}
+          icon={<WarningOutlined />}
+          tone={stats.lowStockCount > 0 ? 'warn' : 'ok'}
+        />
+        <StatCard
+          loading={loading}
+          label={t('dashboard.zeroStock')}
+          value={stats.zeroStockCount}
+          icon={<CloseCircleOutlined />}
+          tone={stats.zeroStockCount > 0 ? 'danger' : 'ok'}
+        />
+        <StatCard
+          loading={loading}
+          label={t('dashboard.totalSuppliers')}
+          value={stats.totalSuppliers}
+          icon={<TeamOutlined />}
+        />
+      </div>
 
       {/* Chart */}
       <Card
@@ -379,7 +385,7 @@ const Dashboard = () => {
             <Select
               value={period}
               onChange={(val) => setPeriod(val)}
-              style={{ width: 160 }}
+              className="w-select"
             >
               <Select.Option value="7days">{t('dashboard.period7days')}</Select.Option>
               <Select.Option value="1month">{t('dashboard.period1month')}</Select.Option>
@@ -387,7 +393,6 @@ const Dashboard = () => {
             </Select>
             {period === 'custom' && (
               <RangePicker
-                size="small"
                 onChange={(dates) => {
                   if (dates && dates[0] && dates[1]) {
                     setCustomRange([dates[0], dates[1]]);
@@ -397,104 +402,46 @@ const Dashboard = () => {
             )}
           </Space>
         }
-        style={{ marginBottom: '24px' }}
+        className="page-gap"
       >
         <ResponsiveContainer width="100%" height={360}>
           <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 10 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="date" tick={{ fontSize: 12 }} />
-            <YAxis tickFormatter={formatYAxis} tick={{ fontSize: 12 }} />
-            <Tooltip formatter={(value: number) => `${value.toLocaleString()} ₫`} />
-            <Legend />
+            <CartesianGrid {...chart.grid} />
+            <XAxis dataKey="date" {...chart.axis} />
+            <YAxis tickFormatter={formatYAxis} {...chart.axis} />
+            <Tooltip formatter={(value: number) => `${value.toLocaleString()} ₫`} {...chart.tooltip} />
+            <Legend formatter={(value) => <span style={chart.legendText}>{value}</span>} />
             <Line
               type="monotone"
               dataKey="inbound"
               name={t('dashboard.inboundAmount')}
-              stroke="#22c55e"
+              stroke={chart.inbound}
               strokeWidth={2}
-              dot={{ r: 5, fill: '#22c55e' }}
-              activeDot={{ r: 7 }}
+              dot={{ r: 4, fill: chart.inbound }}
+              activeDot={{ r: 6 }}
             />
             <Line
               type="monotone"
               dataKey="outbound"
               name={t('dashboard.outboundAmount')}
-              stroke="#ef4444"
+              stroke={chart.outbound}
               strokeWidth={2}
-              dot={{ r: 5, fill: '#ef4444' }}
-              activeDot={{ r: 7 }}
+              dot={{ r: 4, fill: chart.outbound }}
+              activeDot={{ r: 6 }}
             />
           </LineChart>
         </ResponsiveContainer>
       </Card>
 
       {/* Recent Inbound / Outbound */}
-      <Row gutter={[16, 16]}>
-        <Col xs={24} lg={12}>
-          <Card title={t('dashboard.recentInbound')} loading={loading}>
-            {recentInbound.length === 0 ? (
-              <Typography.Text type="secondary">{t('dashboard.noRecentInbound')}</Typography.Text>
-            ) : (
-              recentInbound.map((record, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px 0',
-                    borderBottom: idx < recentInbound.length - 1 ? '1px solid #f0f0f0' : 'none',
-                  }}
-                >
-                  <ArrowUpOutlined style={{ color: '#22c55e', fontSize: 16, marginRight: 12 }} />
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontWeight: 500 }}>
-                      {record.item_code} - {record.item_name}
-                    </span>
-                    <span style={{ marginLeft: 8, color: '#666' }}>
-                      ({record.quantity} {record.item_unit})
-                    </span>
-                  </div>
-                  <span style={{ color: '#999', fontSize: 12 }}>
-                    ({dayjs(record.created_at).format('YYYY-MM-DD HH:mm')})
-                  </span>
-                </div>
-              ))
-            )}
-          </Card>
-        </Col>
-        <Col xs={24} lg={12}>
-          <Card title={t('dashboard.recentOutbound')} loading={loading}>
-            {recentOutbound.length === 0 ? (
-              <Typography.Text type="secondary">{t('dashboard.noRecentOutbound')}</Typography.Text>
-            ) : (
-              recentOutbound.map((record, idx) => (
-                <div
-                  key={idx}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px 0',
-                    borderBottom: idx < recentOutbound.length - 1 ? '1px solid #f0f0f0' : 'none',
-                  }}
-                >
-                  <ArrowDownOutlined style={{ color: '#ef4444', fontSize: 16, marginRight: 12 }} />
-                  <div style={{ flex: 1 }}>
-                    <span style={{ fontWeight: 500 }}>
-                      {record.item_code} - {record.item_name}
-                    </span>
-                    <span style={{ marginLeft: 8, color: '#666' }}>
-                      ({record.quantity} {record.item_unit})
-                    </span>
-                  </div>
-                  <span style={{ color: '#999', fontSize: 12 }}>
-                    ({dayjs(record.created_at).format('YYYY-MM-DD HH:mm')})
-                  </span>
-                </div>
-              ))
-            )}
-          </Card>
-        </Col>
-      </Row>
+      <div className="grid-2">
+        <Card title={t('dashboard.recentInbound')} loading={loading}>
+          {recentList(recentInbound, <ArrowUpOutlined />, t('dashboard.noRecentInbound'))}
+        </Card>
+        <Card title={t('dashboard.recentOutbound')} loading={loading}>
+          {recentList(recentOutbound, <ArrowDownOutlined />, t('dashboard.noRecentOutbound'))}
+        </Card>
+      </div>
     </div>
   );
 };

@@ -11,12 +11,11 @@ import {
   Space,
   message,
   Card,
-  Breadcrumb,
   Popconfirm,
   Tooltip,
-  Typography,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
+import PageHeader from '@/components/PageHeader';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
@@ -30,10 +29,11 @@ type SafeUser = Omit<User, 'password_hash'>;
 
 const { Option } = Select;
 
+// Roles are not a state, so only the one with every right is marked.
 const ROLE_COLOR: Record<string, string> = {
-  system_admin: 'red',
-  admin: 'blue',
-  user: 'green',
+  system_admin: 'processing',
+  admin: 'default',
+  user: 'default',
   viewer: 'default',
 };
 
@@ -210,7 +210,7 @@ const Users = () => {
       title: t('users.role'),
       dataIndex: 'role',
       key: 'role',
-      width: 120,
+      width: 150,
       render: (role: string) => (
         <Tag color={ROLE_COLOR[role] ?? 'default'}>{t(`users.roles.${role}` as never) ?? role}</Tag>
       ),
@@ -236,9 +236,9 @@ const Users = () => {
       title: t('common.status'),
       dataIndex: 'is_active',
       key: 'is_active',
-      width: 80,
+      width: 140,
       render: (active: boolean) => (
-        <Tag color={active ? 'green' : 'red'}>{active ? t('common.active') : t('common.inactive')}</Tag>
+        <Tag color={active ? 'success' : 'default'}>{active ? t('common.active') : t('common.inactive')}</Tag>
       ),
     },
     ...(isAdmin
@@ -300,22 +300,16 @@ const Users = () => {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Breadcrumb
-        style={{ marginBottom: 16 }}
-        items={[{ title: t('common.appName') }, { title: t('users.title') }]}
-      />
-      <Typography.Title level={3} style={{ marginBottom: 16 }}>{t('users.title')}</Typography.Title>
+    <div>
+      <PageHeader title={t('users.title')}>
+        {isAdmin && (
+          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+            {t('common.create')}
+          </Button>
+        )}
+      </PageHeader>
 
       <Card>
-        {isAdmin && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-              {t('common.create')}
-            </Button>
-          </div>
-        )}
-
         <ResizableTable<SafeUser>
           rowKey="user_id"
           columns={columns}
@@ -341,7 +335,7 @@ const Users = () => {
           confirmLoading={submitting}
           forceRender
         >
-          <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
+          <Form form={form} layout="vertical" preserve={false}>
             <Form.Item
               name="username"
               label={t('users.username')}

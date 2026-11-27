@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Row, Col, Card, DatePicker, Typography, Space, message } from 'antd';
+import { Card, DatePicker, message } from 'antd';
 import {
   BarChart,
   Bar,
@@ -19,12 +19,23 @@ import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { getOptionalLocationId } from '@/services/locationContext';
 import { fetchAllRows } from '@/lib/fetchAll';
+import PageHeader from '@/components/PageHeader';
+import { useChartTheme } from '@/components/chartTheme';
 import dayjs, { Dayjs } from 'dayjs';
 
 const { RangePicker } = DatePicker;
-const { Title } = Typography;
 
-const COLORS = ['#2563eb', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+// A long supplier name would run past the chart's edge, so a pie label is cut to
+// the room it has (the tooltip shows the whole name). Widths are estimates at the
+// label's 12px size: a Korean letter is about twice as wide as a Latin one.
+const labelWidth = (text: string) =>
+  [...text].reduce((width, ch) => width + (ch.charCodeAt(0) > 0x2e7f ? 12 : 6.8), 0);
+const fitLabel = (name: string, suffix: string, room: number) => {
+  if (labelWidth(`${name} ${suffix}`) <= room) return `${name} ${suffix}`;
+  let short = name;
+  while (short.length > 1 && labelWidth(`${short}… ${suffix}`) > room) short = short.slice(0, -1);
+  return `${short}… ${suffix}`;
+};
 
 interface DeptData { department_name: string; quantity: number }
 interface MonthlyData { month: string; inbound: number; outbound: number }
@@ -33,6 +44,7 @@ interface TopItemData { item_name: string; quantity: number }
 
 const Analytics = () => {
   const { t } = useTranslation();
+  const chart = useChartTheme();
   const defaultStart = dayjs().subtract(3, 'month').startOf('day');
   const defaultEnd = dayjs().endOf('day');
 
@@ -155,102 +167,98 @@ const Analytics = () => {
     }
   };
 
+  const legendText = (value: string) => <span style={chart.legendText}>{value}</span>;
+
   return (
-    <div style={{ padding: '24px' }}>
-      <Space style={{ marginBottom: '24px', width: '100%', justifyContent: 'space-between' }}>
-        <Title level={3} style={{ margin: 0 }}>
-          {t('analytics.title')}
-        </Title>
+    <div>
+      <PageHeader title={t('analytics.title')}>
         <RangePicker
           value={dateRange}
           onChange={handleRangeChange}
           format="YYYY-MM-DD"
         />
-      </Space>
+      </PageHeader>
 
-      <Row gutter={[16, 16]}>
+      <div className="grid-2">
         {/* Chart 1: Department consumption */}
-        <Col xs={24} lg={12}>
-          <Card title={t('analytics.deptConsumption')} loading={loading}>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart data={deptData} margin={{ top: 5, right: 20, left: 0, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="department_name" angle={-30} textAnchor="end" interval={0} tick={{ fontSize: 11 }} />
-                <YAxis />
-                <Tooltip />
-                <Legend verticalAlign="top" />
-                <Bar dataKey="quantity" name={t('analytics.outboundQty')} fill={COLORS[0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
+        <Card title={t('analytics.deptConsumption')} loading={loading}>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={deptData} margin={{ top: 5, right: 20, left: 0, bottom: 60 }}>
+              <CartesianGrid {...chart.grid} />
+              <XAxis dataKey="department_name" angle={-30} textAnchor="end" interval={0} {...chart.axis} />
+              <YAxis {...chart.axis} />
+              <Tooltip {...chart.tooltip} />
+              <Legend verticalAlign="top" formatter={legendText} />
+              <Bar dataKey="quantity" name={t('analytics.outboundQty')} fill={chart.series[0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
 
         {/* Chart 2: Monthly inbound/outbound trend */}
-        <Col xs={24} lg={12}>
-          <Card title={t('analytics.monthlyTrend')} loading={loading}>
-            <ResponsiveContainer width="100%" height={280}>
-              <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis />
-                <Tooltip />
-                <Legend />
-                <Line type="monotone" dataKey="inbound" name={t('menu.inbound')} stroke={COLORS[1]} strokeWidth={2} dot={{ r: 4 }} />
-                <Line type="monotone" dataKey="outbound" name={t('menu.outbound')} stroke={COLORS[2]} strokeWidth={2} dot={{ r: 4 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
+        <Card title={t('analytics.monthlyTrend')} loading={loading}>
+          <ResponsiveContainer width="100%" height={280}>
+            <LineChart data={monthlyData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
+              <CartesianGrid {...chart.grid} />
+              <XAxis dataKey="month" {...chart.axis} />
+              <YAxis {...chart.axis} />
+              <Tooltip {...chart.tooltip} />
+              <Legend formatter={legendText} />
+              <Line type="monotone" dataKey="inbound" name={t('menu.inbound')} stroke={chart.inbound} strokeWidth={2} dot={{ r: 4 }} />
+              <Line type="monotone" dataKey="outbound" name={t('menu.outbound')} stroke={chart.outbound} strokeWidth={2} dot={{ r: 4 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
 
         {/* Chart 3: Supplier cost pie */}
-        <Col xs={24} lg={12}>
-          <Card title={t('analytics.supplierCost')} loading={loading}>
-            <ResponsiveContainer width="100%" height={280}>
-              <PieChart>
-                <Pie
-                  data={supplierData}
-                  dataKey="value"
-                  nameKey="supplier_name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={100}
-                  label={({ supplier_name, percent }) =>
-                    `${supplier_name} ${((percent ?? 0) * 100).toFixed(0)}%`
-                  }
-                >
-                  {supplierData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => `${value.toLocaleString()} ₫`} />
-              </PieChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
+        <Card title={t('analytics.supplierCost')} loading={loading}>
+          <ResponsiveContainer width="100%" height={280}>
+            <PieChart>
+              <Pie
+                data={supplierData}
+                dataKey="value"
+                nameKey="supplier_name"
+                cx="50%"
+                cy="50%"
+                outerRadius={90}
+                stroke={chart.surface}
+                strokeWidth={2}
+                label={({ supplier_name, percent, x, y, cx, textAnchor }) => (
+                  <text x={x} y={y} textAnchor={textAnchor} dominantBaseline="central" {...chart.label}>
+                    <title>{supplier_name}</title>
+                    {fitLabel(
+                      String(supplier_name),
+                      `${((percent ?? 0) * 100).toFixed(0)}%`,
+                      (textAnchor === 'end' ? Number(x) : Number(cx) * 2 - Number(x)) - 4,
+                    )}
+                  </text>
+                )}
+              >
+                {supplierData.map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={chart.series[index % chart.series.length]} />
+                ))}
+              </Pie>
+              <Tooltip formatter={(value: number) => `${value.toLocaleString()} ₫`} {...chart.tooltip} />
+            </PieChart>
+          </ResponsiveContainer>
+        </Card>
 
         {/* Chart 4: Top 10 items horizontal bar */}
-        <Col xs={24} lg={12}>
-          <Card title={`${t('analytics.topItems')} (Top 10)`} loading={loading}>
-            <ResponsiveContainer width="100%" height={280}>
-              <BarChart
-                data={topItems}
-                layout="vertical"
-                margin={{ top: 5, right: 30, left: 8, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis type="number" />
-                <YAxis dataKey="item_name" type="category" tick={{ fontSize: 11 }} width={150} interval={0} />
-                <Tooltip />
-                <Bar dataKey="quantity" name={t('analytics.outboundQty')} fill={COLORS[4]}>
-                  {topItems.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </Card>
-        </Col>
-      </Row>
+        <Card title={`${t('analytics.topItems')} (Top 10)`} loading={loading}>
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart
+              data={topItems}
+              layout="vertical"
+              margin={{ top: 5, right: 30, left: 8, bottom: 5 }}
+            >
+              <CartesianGrid {...chart.grid} />
+              <XAxis type="number" {...chart.axis} />
+              <YAxis dataKey="item_name" type="category" width={150} interval={0} {...chart.axis} />
+              <Tooltip {...chart.tooltip} />
+              <Bar dataKey="quantity" name={t('analytics.outboundQty')} fill={chart.series[0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </Card>
+      </div>
     </div>
   );
 };

@@ -406,6 +406,16 @@
       "viewer": "Người xem"
     }
   },
+  "layout": {
+    "toggleSidebar": "Mở/đóng menu",
+    "account": "Tài khoản của tôi: {{name}}"
+  },
+  "theme": {
+    "label": "Giao diện",
+    "light": "Sáng",
+    "dark": "Tối",
+    "system": "Hệ thống"
+  },
   "components": {
     "loginSubtitle": "Hệ thống quản lý vật tư MRO",
     "languageSelect": "Chọn ngôn ngữ",

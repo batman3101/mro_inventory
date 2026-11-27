@@ -1,45 +1,20 @@
-import { Button, Space, Typography } from 'antd';
+import { Segmented } from 'antd';
 import { useTranslation } from 'react-i18next';
 
 const LanguageSwitcher = () => {
   const { t, i18n } = useTranslation();
 
   return (
-    <div>
-      <Typography.Text style={{ color: '#9ca3af', fontSize: 12, marginBottom: 6, display: 'block' }}>
-        {t('components.languageSelect')}
-      </Typography.Text>
-      <div style={{ display: 'flex', gap: 8, width: '100%' }}>
-        <Button
-          type={i18n.language === 'ko' ? 'primary' : 'default'}
-          onClick={() => i18n.changeLanguage('ko')}
-          style={{
-            flex: 1,
-            fontSize: 20,
-            height: 36,
-            ...(i18n.language !== 'ko'
-              ? { background: '#374151', borderColor: '#4b5563' }
-              : {}),
-          }}
-        >
-          🇰🇷
-        </Button>
-        <Button
-          type={i18n.language === 'vi' ? 'primary' : 'default'}
-          onClick={() => i18n.changeLanguage('vi')}
-          style={{
-            flex: 1,
-            fontSize: 20,
-            height: 36,
-            ...(i18n.language !== 'vi'
-              ? { background: '#374151', borderColor: '#4b5563' }
-              : {}),
-          }}
-        >
-          🇻🇳
-        </Button>
-      </div>
-    </div>
+    <Segmented
+      aria-label={t('components.languageSelect')}
+      title={t('components.languageSelect')}
+      value={i18n.language?.startsWith('vi') ? 'vi' : 'ko'}
+      onChange={(lang) => i18n.changeLanguage(lang)}
+      options={[
+        { value: 'ko', label: 'KO' },
+        { value: 'vi', label: 'VI' },
+      ]}
+    />
   );
 };
 

@@ -1,12 +1,10 @@
-import { Card, Form, Input, Button, Alert, Typography, ConfigProvider } from 'antd';
+import { Form, Input, Button, Alert, Typography } from 'antd';
 import { MailOutlined, LockOutlined } from '@ant-design/icons';
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/auth.store';
 
-const { Title, Text } = Typography;
-
-const ALMUS_BLUE = '#1F3D7C';
+const { Text } = Typography;
 
 interface LoginFormValues {
   email: string;
@@ -27,112 +25,67 @@ const Login = () => {
   };
 
   return (
-    <ConfigProvider theme={{ token: { colorPrimary: ALMUS_BLUE } }}>
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          minHeight: '100vh',
-          backgroundColor: '#f0f2f5',
-        }}
-      >
-        <Card
-          style={{
-            width: 400,
-            boxShadow: '0 4px 24px rgba(0, 0, 0, 0.12)',
-          }}
+    <div className="auth">
+      <div className="auth-card">
+        <div className="auth-head">
+          <span className="auth-logo" role="img" aria-label="ALMUS" />
+          <h1>MRO Inventory</h1>
+          <Text type="secondary">{t('components.loginSubtitle')}</Text>
+        </div>
+
+        {error && <Alert message={error} type="error" showIcon className="page-gap" />}
+
+        <Form
+          form={form}
+          layout="vertical"
+          onFinish={handleSubmit}
+          requiredMark={false}
         >
-          <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <img
-              src="/ALMUS BLUE.png"
-              alt="ALMUS"
-              style={{
-                display: 'block',
-                height: 40,
-                width: 'auto',
-                maxWidth: '60%',
-                objectFit: 'contain',
-                margin: '0 auto 12px',
-              }}
-            />
-            <Title
-              level={2}
-              style={{
-                color: ALMUS_BLUE,
-                fontWeight: 'bold',
-                marginBottom: 4,
-                marginTop: 0,
-              }}
-            >
-              MRO Inventory
-            </Title>
-            <Text type="secondary">{t('components.loginSubtitle')}</Text>
-          </div>
-
-          {error && (
-            <Alert
-              message={error}
-              type="error"
-              showIcon
-              style={{ marginBottom: 24 }}
-            />
-          )}
-
-          <Form
-            form={form}
-            layout="vertical"
-            onFinish={handleSubmit}
-            requiredMark={false}
+          <Form.Item
+            name="email"
+            label={t('auth.email')}
+            rules={[
+              { required: true, message: t('auth.email') },
+              { type: 'email', message: t('auth.email') },
+            ]}
           >
-            <Form.Item
-              name="email"
-              label={t('auth.email')}
-              rules={[
-                { required: true, message: t('auth.email') },
-                { type: 'email', message: t('auth.email') },
-              ]}
-            >
-              <Input
-                prefix={<MailOutlined />}
-                placeholder={t('auth.email')}
-                size="large"
-                autoComplete="email"
-              />
-            </Form.Item>
+            <Input
+              prefix={<MailOutlined />}
+              placeholder={t('auth.email')}
+              size="large"
+              autoComplete="email"
+            />
+          </Form.Item>
 
-            <Form.Item
-              name="password"
-              label={t('auth.password')}
-              rules={[{ required: true, message: t('auth.password') }]}
-            >
-              <Input.Password
-                prefix={<LockOutlined />}
-                placeholder={t('auth.password')}
-                size="large"
-                autoComplete="current-password"
-              />
-            </Form.Item>
+          <Form.Item
+            name="password"
+            label={t('auth.password')}
+            rules={[{ required: true, message: t('auth.password') }]}
+          >
+            <Input.Password
+              prefix={<LockOutlined />}
+              placeholder={t('auth.password')}
+              size="large"
+              autoComplete="current-password"
+            />
+          </Form.Item>
 
-            <Form.Item style={{ marginBottom: 0 }}>
-              <Button
-                type="primary"
-                htmlType="submit"
-                size="large"
-                block
-                loading={isLoading}
-              >
-                {t('auth.loginButton')}
-              </Button>
-            </Form.Item>
-          </Form>
-          <div style={{ textAlign: 'center', marginTop: 16 }}>
-            <Text type="secondary">{t('auth.noAccount')} </Text>
-            <Link to="/signup">{t('auth.signup')}</Link>
-          </div>
-        </Card>
+          <Button
+            type="primary"
+            htmlType="submit"
+            size="large"
+            block
+            loading={isLoading}
+          >
+            {t('auth.loginButton')}
+          </Button>
+        </Form>
+        <div className="auth-foot">
+          <Text type="secondary">{t('auth.noAccount')} </Text>
+          <Link to="/signup">{t('auth.signup')}</Link>
+        </div>
       </div>
-    </ConfigProvider>
+    </div>
   );
 };
 

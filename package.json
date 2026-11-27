@@ -12,6 +12,7 @@
     "start": "cd server && npm start",
     "lint": "eslint .",
     "lint:i18n": "node scripts/validate-i18n.mjs",
+    "lint:contrast": "node scripts/check-contrast.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

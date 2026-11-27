@@ -10,11 +10,11 @@ import {
   Popconfirm,
   message,
   Card,
-  Breadcrumb,
 } from 'antd';
-import { Upload, Alert, List, Tooltip, Typography } from 'antd';
+import { Upload, Alert, List, Tooltip } from 'antd';
 import * as XLSX from 'xlsx';
 import { ResizableTable } from '@/components/ResizableTable';
+import PageHeader from '@/components/PageHeader';
 import {
   PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined,
   DownloadOutlined, UploadOutlined,
@@ -29,8 +29,8 @@ import { getOptionalLocationId } from '@/services/locationContext';
 const { Option } = Select;
 
 const STATUS_COLOR: Record<string, string> = {
-  ACTIVE: 'green',
-  INACTIVE: 'red',
+  ACTIVE: 'success',
+  INACTIVE: 'default',
 };
 
 interface SupplierFormValues {
@@ -265,7 +265,7 @@ const Suppliers = () => {
       title: t('common.status'),
       dataIndex: 'status',
       key: 'status',
-      width: 90,
+      width: 140,
       render: (status: string) => (
         <Tag color={STATUS_COLOR[status] ?? 'default'}>
           {getStatusLabel(status)}
@@ -302,47 +302,42 @@ const Suppliers = () => {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Breadcrumb
-        style={{ marginBottom: 16 }}
-        items={[{ title: t('common.appName') }, { title: t('suppliers.title') }]}
-      />
-      <Typography.Title level={3} style={{ marginBottom: 16 }}>{t('suppliers.title')}</Typography.Title>
+    <div>
+      <PageHeader title={t('suppliers.title')}>
+        <Button icon={<DownloadOutlined />} onClick={downloadSupplierImportTemplate}>
+          {t('suppliers.supplierTemplate')}
+        </Button>
+        <Button
+          icon={<UploadOutlined />}
+          onClick={() => { setBulkResult(null); setBulkOpen(true); }}
+        >
+          {t('suppliers.bulkUpload')}
+        </Button>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+          {t('common.create')}
+        </Button>
+      </PageHeader>
 
       <Card>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div className="toolbar">
           <Input
             prefix={<SearchOutlined />}
             placeholder={t('suppliers.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 220 }}
+            className="w-search"
             allowClear
           />
           <Select
             placeholder={t('common.status')}
             allowClear
-            style={{ width: 140 }}
+            className="w-select"
             value={statusFilter}
             onChange={(val) => setStatusFilter(val)}
           >
             <Option value="ACTIVE">{t('common.active')}</Option>
             <Option value="INACTIVE">{t('common.inactive')}</Option>
           </Select>
-          <Space style={{ marginLeft: 'auto' }}>
-            <Button icon={<DownloadOutlined />} onClick={downloadSupplierImportTemplate}>
-              {t('suppliers.supplierTemplate')}
-            </Button>
-            <Button
-              icon={<UploadOutlined />}
-              onClick={() => { setBulkResult(null); setBulkOpen(true); }}
-            >
-              {t('suppliers.bulkUpload')}
-            </Button>
-            <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-              {t('common.create')}
-            </Button>
-          </Space>
         </div>
 
         <ResizableTable<Supplier>
@@ -366,7 +361,7 @@ const Suppliers = () => {
         width={600}
         destroyOnHidden
       >
-        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
+        <Form form={form} layout="vertical" preserve={false}>
           <Form.Item
             name="supplier_name"
             label={t('suppliers.supplierName')}
@@ -409,7 +404,7 @@ const Suppliers = () => {
         width={680}
         destroyOnHidden
       >
-        <Space direction="vertical" style={{ width: '100%' }} size="middle">
+        <div className="stack">
           <Alert type="info" showIcon message={t('suppliers.bulkHelp')} />
           <Upload.Dragger
             multiple={false}
@@ -439,15 +434,15 @@ const Suppliers = () => {
                   size="small"
                   bordered
                   dataSource={bulkResult.errors}
-                  style={{ maxHeight: 240, overflowY: 'auto' }}
+                  className="scroll-list"
                   renderItem={(item) => (
-                    <List.Item style={{ color: '#ff4d4f' }}>{item}</List.Item>
+                    <List.Item className="t-danger">{item}</List.Item>
                   )}
                 />
               )}
             </>
           )}
-        </Space>
+        </div>
       </DraggableModal>
     </div>
   );

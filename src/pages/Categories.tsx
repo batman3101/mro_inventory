@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { DraggableModal } from "@/components/DraggableModal";
 import {
-  Button, Input, Form, Tag, Space, Popconfirm, message, Card, InputNumber, Switch, Tooltip, Typography,
+  Button, Input, Form, Tag, Space, Popconfirm, message, Card, InputNumber, Switch, Tooltip,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
+import PageHeader from '@/components/PageHeader';
 import {
   PlusOutlined, SearchOutlined, EditOutlined, DeleteOutlined,
 } from '@ant-design/icons';
@@ -153,7 +154,7 @@ const Categories = () => {
       dataIndex: 'category_name_vi',
       key: 'category_name_vi',
       width: 200,
-      render: (v: string | null) => v || <span style={{ color: '#ccc' }}>—</span>,
+      render: (v: string | null) => v || <span className="muted">—</span>,
       sorter: (a, b) => (a.category_name_vi ?? '').localeCompare(b.category_name_vi ?? ''),
     },
     {
@@ -168,9 +169,9 @@ const Categories = () => {
       title: t('common.status'),
       dataIndex: 'is_active',
       key: 'is_active',
-      width: 90,
+      width: 140,
       render: (v: boolean) =>
-        v ? <Tag color="blue">{t('common.active')}</Tag> : <Tag>{t('common.inactive')}</Tag>,
+        v ? <Tag color="success">{t('common.active')}</Tag> : <Tag>{t('common.inactive')}</Tag>,
       filters: [
         { text: t('common.active'), value: true },
         { text: t('common.inactive'), value: false },
@@ -203,27 +204,28 @@ const Categories = () => {
   ];
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
-        <Typography.Title level={3} style={{ margin: 0 }}>{t('categories.title')}</Typography.Title>
+    <div>
+      <PageHeader title={t('categories.title')}>
         <Button type="primary" icon={<PlusOutlined />} onClick={openCreate}>
           {t('categories.createCategory')}
         </Button>
-      </div>
+      </PageHeader>
 
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 16 }}>
+        <div className="toolbar">
           <Input
             prefix={<SearchOutlined />}
             placeholder={t('categories.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{ width: 280 }}
+            className="w-search"
             allowClear
           />
-          <span style={{ color: '#666', fontSize: 13 }}>
-            {t('common.total', { count: filtered.length })}
-          </span>
+          <div className="right">
+            <span className="count">
+              {t('common.total', { count: filtered.length })}
+            </span>
+          </div>
         </div>
 
         <ResizableTable<Category>
@@ -251,7 +253,7 @@ const Categories = () => {
         width={520}
         destroyOnHidden
       >
-        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
+        <Form form={form} layout="vertical" preserve={false}>
           <Form.Item
             name="category_code"
             label={t('categories.categoryCode')}
@@ -270,7 +272,7 @@ const Categories = () => {
             <Input placeholder="—" />
           </Form.Item>
           <Form.Item name="sort_order" label={t('categories.sortOrder')}>
-            <InputNumber min={0} style={{ width: '100%' }} />
+            <InputNumber min={0} className="fill" />
           </Form.Item>
           <Form.Item name="is_active" label={t('categories.isActive')} valuePropName="checked">
             <Switch />

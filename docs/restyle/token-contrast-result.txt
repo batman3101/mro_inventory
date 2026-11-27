@@ -1,0 +1,80 @@
+
+== light
+PASS 15.90 (>= 4.5) text ink on surface — body text
+PASS 14.81 (>= 4.5) text ink on surface2 — text on a table header / hover
+PASS 13.67 (>= 4.5) text ink on surface3 — neutral tag
+PASS 13.52 (>= 4.5) text ink on ground — text on the page ground
+PASS 14.28 (>= 4.5) text ink on hover — hovered row / menu
+PASS 13.50 (>= 4.5) text ink on dangerWeak — low-stock row
+PASS 12.78 (>= 4.5) text ink on sel — selected row
+PASS  6.84 (>= 4.5) text ink2 on surface — secondary text, labels
+PASS  6.37 (>= 4.5) text ink2 on surface2 — table header text
+PASS  5.81 (>= 4.5) text ink2 on ground — secondary text on the ground
+PASS  6.14 (>= 4.5) text ink2 on hover — menu icon on hover
+PASS  5.36 (>= 4.5) text ink3 on surface — quiet text, placeholder
+PASS  4.99 (>= 4.5) text ink3 on surface2 — quiet text on a header
+PASS  6.04 (>= 4.5) text accent on surface — link, chosen value
+PASS  5.14 (>= 4.5) text accent on accentWeak — chosen menu / segment / tag
+PASS  5.13 (>= 4.5) text accent on dangerWeak — link button in a low-stock row
+PASS  5.43 (>= 4.5) text accent on hover — link button in a hovered row
+PASS  6.04 (>= 4.5) text accentInk on accent — primary button
+PASS  8.08 (>= 4.5) text accentInk on accentHover — primary button, hover
+PASS  5.37 (>= 4.5) text ok on surface — good state text
+PASS  4.70 (>= 4.5) text ok on okWeak — good state tag / alert
+PASS  5.37 (>= 4.5) text warn on surface — warning text
+PASS  4.80 (>= 4.5) text warn on warnWeak — warning tag / alert
+PASS  6.31 (>= 4.5) text danger on surface — danger text
+PASS  5.36 (>= 4.5) text danger on dangerWeak — danger tag / low-stock number
+PASS  5.67 (>= 4.5) text danger on hover — delete button in a hovered row
+PASS  6.31 (>= 4.5) text dangerInk on danger — danger button
+PASS 10.41 (>= 4.5) text brandInk on surface — sign-in title and wordmark
+PASS 15.90 (>= 4.5) text tipInk on tip — tooltip
+PASS  3.30 (>= 3) ui   lineInput on surface — input border
+PASS  6.04 (>= 3) ui   accent on surface — focus / chosen border
+PASS  4.11 (>= 3) ui   focus on surface — focus outline
+PASS  3.49 (>= 3) ui   focus on ground — focus outline on the ground
+info  4.42 chart viz1 on surface (lines and bars; WorkBoard's chart colours, not text)
+info  3.20 chart viz2 on surface (lines and bars; WorkBoard's chart colours, not text)
+info  2.82 chart viz3 on surface (lines and bars; WorkBoard's chart colours, not text)
+info  2.17 chart viz4 on surface (lines and bars; WorkBoard's chart colours, not text)
+
+== dark
+PASS 13.92 (>= 4.5) text ink on surface — body text
+PASS 13.04 (>= 4.5) text ink on surface2 — text on a table header / hover
+PASS 11.64 (>= 4.5) text ink on surface3 — neutral tag
+PASS 15.25 (>= 4.5) text ink on ground — text on the page ground
+PASS 12.28 (>= 4.5) text ink on hover — hovered row / menu
+PASS 12.27 (>= 4.5) text ink on dangerWeak — low-stock row
+PASS 11.06 (>= 4.5) text ink on sel — selected row
+PASS  7.92 (>= 4.5) text ink2 on surface — secondary text, labels
+PASS  7.41 (>= 4.5) text ink2 on surface2 — table header text
+PASS  8.67 (>= 4.5) text ink2 on ground — secondary text on the ground
+PASS  6.98 (>= 4.5) text ink2 on hover — menu icon on hover
+PASS  5.65 (>= 4.5) text ink3 on surface — quiet text, placeholder
+PASS  5.29 (>= 4.5) text ink3 on surface2 — quiet text on a header
+PASS  6.27 (>= 4.5) text accent on surface — link, chosen value
+PASS  5.33 (>= 4.5) text accent on accentWeak — chosen menu / segment / tag
+PASS  5.53 (>= 4.5) text accent on dangerWeak — link button in a low-stock row
+PASS  5.53 (>= 4.5) text accent on hover — link button in a hovered row
+PASS  6.91 (>= 4.5) text accentInk on accent — primary button
+PASS  8.91 (>= 4.5) text accentInk on accentHover — primary button, hover
+PASS  6.89 (>= 4.5) text ok on surface — good state text
+PASS  5.67 (>= 4.5) text ok on okWeak — good state tag / alert
+PASS  7.98 (>= 4.5) text warn on surface — warning text
+PASS  6.70 (>= 4.5) text warn on warnWeak — warning tag / alert
+PASS  5.78 (>= 4.5) text danger on surface — danger text
+PASS  5.09 (>= 4.5) text danger on dangerWeak — danger tag / low-stock number
+PASS  5.09 (>= 4.5) text danger on hover — delete button in a hovered row
+PASS  6.37 (>= 4.5) text dangerInk on danger — danger button
+PASS 13.92 (>= 4.5) text brandInk on surface — sign-in title and wordmark
+PASS 12.01 (>= 4.5) text tipInk on tip — tooltip
+PASS  3.45 (>= 3) ui   lineInput on surface — input border
+PASS  6.27 (>= 3) ui   accent on surface — focus / chosen border
+PASS  6.27 (>= 3) ui   focus on surface — focus outline
+PASS  6.87 (>= 3) ui   focus on ground — focus outline on the ground
+info  4.75 chart viz1 on surface (lines and bars; WorkBoard's chart colours, not text)
+info  4.45 chart viz2 on surface (lines and bars; WorkBoard's chart colours, not text)
+info  5.07 chart viz3 on surface (lines and bars; WorkBoard's chart colours, not text)
+info  5.63 chart viz4 on surface (lines and bars; WorkBoard's chart colours, not text)
+
+All text and control pairs meet WCAG AA

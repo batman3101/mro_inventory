@@ -9,11 +9,10 @@ import {
   Popconfirm,
   message,
   Card,
-  Breadcrumb,
   Tooltip,
-  Typography,
 } from 'antd';
 import { ResizableTable } from '@/components/ResizableTable';
+import PageHeader from '@/components/PageHeader';
 import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useTranslation } from 'react-i18next';
 import type { ColumnsType } from 'antd/es/table';
@@ -182,20 +181,14 @@ const Departments = () => {
   ];
 
   return (
-    <div style={{ padding: '24px' }}>
-      <Breadcrumb
-        style={{ marginBottom: 16 }}
-        items={[{ title: t('common.appName') }, { title: t('departments.title') }]}
-      />
-      <Typography.Title level={3} style={{ marginBottom: 16 }}>{t('departments.title')}</Typography.Title>
+    <div>
+      <PageHeader title={t('departments.title')}>
+        <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
+          {t('common.create')}
+        </Button>
+      </PageHeader>
 
       <Card>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 16 }}>
-          <Button type="primary" icon={<PlusOutlined />} onClick={openCreateModal}>
-            {t('common.create')}
-          </Button>
-        </div>
-
         <ResizableTable<Department>
           rowKey="department_id"
           columns={columns}
@@ -219,7 +212,7 @@ const Departments = () => {
         confirmLoading={submitting}
         destroyOnHidden
       >
-        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
+        <Form form={form} layout="vertical" preserve={false}>
           <Form.Item
             name="department_code"
             label={t('departments.departmentCode')}

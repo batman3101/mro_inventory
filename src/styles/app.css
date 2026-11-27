@@ -1,0 +1,145 @@
+/* Look of the app, after ALMUS WorkBoard: a top bar and a left menu over a cool grey ground, one work surface,
+   dense 36px rows. Every colour comes from src/styles/tokens.ts (as CSS variables) — none is written here.
+   So do the sizes shared across the app (radius, row, top bar, side menu). Spacing and font sizes that belong
+   to one rule are plain numbers in that rule. */
+
+/* ---------- base ---------- */
+*,*::before,*::after{box-sizing:border-box}
+/* every digit the same width, and none of Inter's automatic shapes ("->" as an arrow) */
+*,::before,::after{font-variant-numeric:tabular-nums!important;font-variant-ligatures:no-contextual!important}
+html,body,#root{height:100%}
+body{margin:0;background:var(--ground);color:var(--ink);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--focus);outline-offset:1px}
+::selection{background:var(--sel)}
+
+/* ---------- words and numbers ---------- */
+.muted{color:var(--ink-3)}
+.sub{color:var(--ink-2)}
+.t-ok{color:var(--ok)}
+.t-warn{color:var(--warn)}
+.t-danger{color:var(--danger)}
+.strong{font-weight:600}
+.small{font-size:12px}
+.ell{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.sp{flex:1}
+.stack{display:flex;flex-direction:column;gap:16px;min-width:0}
+.fill{width:100%}
+
+/* ---------- shell ---------- */
+.app{height:100%;display:flex;flex-direction:column;overflow:hidden}
+.app-top{height:var(--top);flex:none;display:flex;align-items:center;gap:8px;padding:0 12px 0 10px;background:var(--surface);border-bottom:1px solid var(--line);position:relative;z-index:30}
+.app-brand{display:flex;align-items:center;gap:8px;padding:0 6px;height:36px;font-weight:600;white-space:nowrap;min-width:0}
+.app-brand img{width:24px;height:24px;flex:none}
+.app-top .tbtn.ant-btn{width:36px;height:36px;padding:0;color:var(--ink-2);flex:none}
+.app-top .tbtn.ant-btn:hover{color:var(--ink)}
+.app-top .tsep{width:1px;height:24px;background:var(--line);margin:0 4px;flex:none}
+.app-top .lbl{font-size:12.5px;font-weight:500;color:var(--ink-2);white-space:nowrap}
+.app-avatar{width:32px;height:32px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;background:var(--accent-weak);color:var(--accent);font-size:13px;font-weight:600;letter-spacing:-.02em;user-select:none}
+.app-shell{flex:1;display:flex;min-height:0}
+.app-side{width:var(--side);flex:none;background:var(--surface);border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;transition:margin-left .18s ease,visibility 0s}
+.app-side.closed{margin-left:calc(var(--side)*-1);visibility:hidden;transition:margin-left .18s ease,visibility 0s .18s}
+.app-side .scroll{flex:1;min-height:0;overflow-y:auto;padding:8px 0 16px}
+.app-side .ant-menu{border-inline-end:0!important;background:transparent}
+.app-side .ant-menu-item{width:calc(100% - 16px)}
+.app-side .ant-menu-item .anticon{color:var(--ink-2)}
+.app-side .ant-menu-item-selected{font-weight:500}
+.app-side .ant-menu-item-selected .anticon{color:var(--accent)}
+.app-sidefoot{border-top:1px solid var(--line);padding:10px 12px 12px;display:flex;flex-direction:column;gap:6px}
+.app-sidefoot .lbl{font-size:12px;font-weight:600;color:var(--ink-3);letter-spacing:.02em}
+/* three choices share the menu's width: less side padding so the Vietnamese words fit whole */
+.app-sidefoot .ant-segmented .ant-segmented-item-label{padding-inline:4px}
+.app-sidefoot .ant-segmented .ant-segmented-item-icon+span{margin-inline-start:4px}
+.app-main{flex:1;min-width:0;display:flex;flex-direction:column;padding:10px 10px 0}
+.app-surface{flex:1;min-height:0;background:var(--surface);border-radius:var(--radius-large) var(--radius-large) 0 0;border:1px solid var(--line);border-bottom:0;display:flex;flex-direction:column;overflow:hidden}
+.app-page{flex:1;min-height:0;overflow:auto;padding:24px 28px 40px}
+.app-page::-webkit-scrollbar,.app-side .scroll::-webkit-scrollbar{width:10px;height:10px}
+.app-page::-webkit-scrollbar-thumb,.app-side .scroll::-webkit-scrollbar-thumb{background:var(--line-2);border-radius:8px;border:2px solid transparent;background-clip:padding-box}
+.app-page::-webkit-scrollbar-track,.app-side .scroll::-webkit-scrollbar-track{background:transparent}
+
+/* the account pop-up under the top bar */
+.user-pop{min-width:220px;max-width:300px;display:flex;flex-direction:column;gap:2px}
+.user-pop .who{display:flex;flex-direction:column;gap:0;padding:2px 4px 8px;min-width:0}
+.user-pop .who .mail{font-size:12px;color:var(--ink-3);overflow-wrap:anywhere}
+.user-pop .who .ant-tag{align-self:flex-start;margin-top:6px}
+.user-pop .msep{height:1px;background:var(--line);margin:4px -12px}
+.user-pop .ant-btn{justify-content:flex-start}
+
+/* ---------- page ---------- */
+.page-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+.page-h h1{font-size:22px;font-weight:600;line-height:1.3;margin:0;letter-spacing:-.01em;text-wrap:balance;color:var(--ink)}
+.page-h .acts{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.page-gap{margin-bottom:16px}
+.toolbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.toolbar .right{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-left:auto}
+.toolbar .count{font-size:13px;color:var(--ink-2);white-space:nowrap}
+.w-search{width:260px}
+.w-select{width:160px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.stat{padding:14px 16px;display:flex;flex-direction:column;gap:2px;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);min-width:0}
+.stat .k{font-size:12.5px;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.stat .v{font-size:26px;font-weight:600;line-height:1.25;letter-spacing:-.02em;overflow-wrap:anywhere}
+.stat .v small{font-size:13px;font-weight:500;color:var(--ink-2);letter-spacing:0;margin-left:4px}
+.stat.ok .v{color:var(--ok)}
+.stat.warn .v{color:var(--warn)}
+.stat.danger .v{color:var(--danger)}
+.grid-2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.grid-form-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.grid-form-21{display:grid;grid-template-columns:2fr 1fr;gap:8px}
+.h-sec{font-size:13px;font-weight:500;color:var(--ink-2);margin:0 0 8px}
+.note{padding:8px;font-size:12px;color:var(--ink-2);background:var(--surface-2);border:1px dashed var(--line-2);border-radius:var(--radius-small);text-align:center}
+.readonly-field .k{font-size:12.5px;font-weight:500;color:var(--ink-2);margin-bottom:4px}
+.readonly-field .v{padding:6px 10px;background:var(--surface-2);border:1px solid var(--line);border-radius:var(--radius-small);font-weight:600}
+.scroll-list{max-height:220px;overflow-y:auto}
+
+/* a list of lines inside a card (the dashboard's latest receipts and issues) */
+.lines .li{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line);min-width:0}
+.lines .li:first-child{border-top:0}
+.lines .li .anticon{color:var(--ink-3);flex:none}
+.lines .li .what{flex:1;min-width:0}
+.lines .li .what b{font-weight:500}
+.lines .li .when{font-size:12px;color:var(--ink-3);white-space:nowrap}
+
+/* ---------- sign in / sign up ---------- */
+.auth{min-height:100%;display:flex;align-items:center;justify-content:center;padding:24px 16px;background:var(--ground)}
+.auth-card{width:400px;max-width:100%;background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-large);box-shadow:var(--shadow-pop);padding:28px 28px 24px}
+.auth-head{text-align:center;margin-bottom:24px}
+.auth-head h1{font-size:22px;font-weight:600;line-height:1.3;letter-spacing:-.01em;margin:0 0 4px;color:var(--brand-ink)}
+/* the ALMUS wordmark is a mask so its colour follows the theme */
+.auth-logo{display:block;height:28px;aspect-ratio:1879/358;margin:0 auto 14px;background-color:var(--brand-ink);-webkit-mask:url("/ALMUS%20BLUE.png") center/contain no-repeat;mask:url("/ALMUS%20BLUE.png") center/contain no-repeat}
+.auth-foot{text-align:center;margin-top:16px}
+
+/* ---------- Ant Design, where a theme token cannot reach ---------- */
+.ant-btn{letter-spacing:0}
+.ant-form-item .ant-form-item-label>label{font-weight:500}
+.ant-table-wrapper .ant-table-thead>tr>th,.ant-table-wrapper .ant-table-thead>tr>td{font-weight:500;font-size:12.5px;height:var(--row)}
+.ant-table-wrapper .ant-table-tbody>tr>td{height:var(--row)}
+/* buttons inside a row stay within the 36px row */
+.ant-table-wrapper .ant-table-tbody .ant-btn{height:24px;padding-inline:6px;font-size:13px}
+.ant-table-wrapper .ant-table-tbody .ant-btn.ant-btn-icon-only{width:24px;padding-inline:0}
+.ant-table-wrapper .ant-table-tbody>tr.row-alert>td,
+.ant-table-wrapper .ant-table-tbody>tr.row-alert.ant-table-row:hover>td,
+.ant-table-wrapper .ant-table-tbody>tr.row-alert>td.ant-table-cell-row-hover{background:var(--danger-weak)}
+/* a tag is a tinted ground and a word, with no outline (the state tags set their own border, hence the doubled class) */
+.ant-tag,.ant-tag[class*="ant-tag-"]{border-color:transparent}
+.ant-tag{font-size:12px;line-height:20px;margin-inline-end:0}
+.ant-segmented{border:1px solid var(--line-2)}
+.ant-segmented .ant-segmented-item{font-size:12.5px;font-weight:500}
+.ant-segmented .ant-segmented-item-selected,.ant-segmented .ant-segmented-thumb{box-shadow:none}
+.ant-card .ant-card-head{font-weight:600}
+.ant-card .ant-card-head-title{white-space:normal}
+/* a window's title and buttons are set off by a line, as in WorkBoard */
+.ant-modal:not(.ant-modal-confirm) .ant-modal-content{padding:0}
+.ant-modal:not(.ant-modal-confirm) .ant-modal-header{padding:16px 52px 12px 20px;margin:0;border-bottom:1px solid var(--line)}
+.ant-modal:not(.ant-modal-confirm) .ant-modal-body{padding:16px 20px}
+.ant-modal:not(.ant-modal-confirm) .ant-modal-footer{padding:12px 20px;margin:0;border-top:1px solid var(--line)}
+.ant-modal .ant-modal-title{font-weight:600}
+
+/* ---------- charts ---------- */
+.recharts-wrapper{font-size:12px}
+.recharts-default-tooltip{border-radius:var(--radius)!important;box-shadow:var(--shadow-pop)}
+
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;transition-duration:.01ms!important}
+}
