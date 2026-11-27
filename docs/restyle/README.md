@@ -31,11 +31,13 @@
 파일 이름: `<before|after>-<light|dark>-<ko|vi>-<화면>.png`, 창 폭 1440px, 화면 전체.
 
 - `before/` 40장 — 기준 커밋에서 찍음. 변경 전에는 다크 모드가 없어서 `before-dark-*` 는 PC 를 다크로 두어도 라이트와 똑같이 나온다는 것을 보여준다.
-- `after/` 58장 — 12개 화면(Login, Signup, Dashboard, Items, Categories, Inventory, Inbound, Outbound, Suppliers, Departments, Analytics, Users)을 라이트·다크 × 한국어·베트남어로. 한국어에는 창 5개(단가 관리, 소모품 등록, 새 출고, 소모품 상세, 일괄등록)와 계정 팝업, 메뉴를 닫은 모습이 더 있다. Login·Signup 은 언어 전환 버튼이 로그인 뒤에만 있어 한국어만 있다.
+- `after/` 58장 — 마지막 코드 커밋 `ec628dd` 상태에서 찍음. 12개 화면(Login, Signup, Dashboard, Items, Categories, Inventory, Inbound, Outbound, Suppliers, Departments, Analytics, Users)을 라이트·다크 × 한국어·베트남어로. 한국어에는 창 5개(단가 관리, 소모품 등록, 새 출고, 소모품 상세, 일괄등록)와 계정 팝업, 메뉴를 닫은 모습이 더 있다. Login·Signup 은 언어 전환 버튼이 로그인 뒤에만 있어 한국어만 있다.
 
 **찍은 방법.** 운영 DB 에는 접속하지 않았다. PC 안에 임시 Supabase(테스트용 DB)를 띄우고 저장소의 `database/db_setup.sql` + `supabase/migrations/*` 를 적용한 뒤, 지어낸 데이터(`tools/seed.sql`: 품목 25, 입고 69, 출고 193 …)를 넣고 임시 계정으로 로그인해 찍었다. 화면에 보이는 사람·업체 이름은 모두 가짜다.
 
 ## 자동 확인 결과
+
+아래 화면 검사는 마지막 코드 커밋 `ec628dd` 상태에서, 저장소의 `tools/seed.sql`·`tools/*.mjs` 그대로 다시 돌린 결과다.
 
 | 확인 | 결과 | 원문 |
 |---|---|---|
