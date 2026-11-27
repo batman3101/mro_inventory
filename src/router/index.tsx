@@ -8,6 +8,10 @@ const router = createBrowserRouter([
     lazy: () => import('@/pages/Login').then((m) => ({ Component: m.default })),
   },
   {
+    path: '/signup',
+    lazy: () => import('@/pages/Signup').then((m) => ({ Component: m.default })),
+  },
+  {
     path: '/',
     element: (
       <ProtectedRoute>

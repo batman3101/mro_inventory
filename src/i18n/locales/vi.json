@@ -44,7 +44,19 @@
     "email": "Email",
     "password": "Mật khẩu",
     "loginButton": "Đăng nhập",
-    "loginError": "Email hoặc mật khẩu không đúng."
+    "loginError": "Email hoặc mật khẩu không đúng.",
+    "noAccount": "Chưa có tài khoản?",
+    "signup": "Đăng ký",
+    "signupSubtitle": "Cần quản trị viên phê duyệt sau khi đăng ký",
+    "fullName": "Họ tên",
+    "passwordMin": "Mật khẩu phải có ít nhất 6 ký tự",
+    "passwordConfirm": "Xác nhận mật khẩu",
+    "passwordMismatch": "Mật khẩu không khớp",
+    "signupButton": "Gửi đăng ký",
+    "signupDoneTitle": "Đã gửi đăng ký",
+    "signupPendingDesc": "Bạn có thể đăng nhập sau khi quản trị viên phê duyệt.",
+    "signupCheckEmailDesc": "Vui lòng nhấn vào liên kết trong email xác nhận. Sau khi xác nhận và được quản trị viên phê duyệt, bạn có thể đăng nhập.",
+    "backToLogin": "Quay lại đăng nhập"
   },
   "dashboard": {
     "title": "Bảng điều khiển",
@@ -402,8 +414,11 @@
   "errors": {
     "auth": {
       "loginFailed": "Đã xảy ra lỗi khi đăng nhập.",
-      "inactive": "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
-      "noProfile": "Tài khoản chưa được liên kết với thông tin người dùng. Vui lòng liên hệ quản trị viên."
+      "inactive": "Tài khoản chưa được phê duyệt hoặc đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
+      "noProfile": "Tài khoản chưa được liên kết với thông tin người dùng. Vui lòng liên hệ quản trị viên.",
+      "alreadyRegistered": "Email này đã được đăng ký.",
+      "signupDisabled": "Hiện không cho phép đăng ký. Vui lòng liên hệ quản trị viên.",
+      "signupFailed": "Đã xảy ra lỗi khi đăng ký: {{message}}"
     },
     "location": {
       "notSelected": "Chưa chọn vị trí."
