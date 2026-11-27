@@ -38,6 +38,21 @@
 - 모든 서비스의 목록 조회 시 `getOptionalLocationId()`로 현재 공장 필터링
 - 공장 변경 시 `<Outlet key={locationId}>` 로 페이지 자동 리마운트
 
+## Auth · 권한 · 데이터 정합성 (2026-11-27 감사 수정 이후)
+
+- 로그인은 **Supabase Auth** (`supabase.auth.signInWithPassword`). `users.auth_user_id` 로 앱 프로필과 연결. 비밀번호는 `auth.users` 에 있고 `users.password_hash` 는 더 이상 쓰지 않는다.
+- 권한은 **DB RLS 가 강제**한다 (`private.*` 헬퍼, `app_*` 정책). 화면 숨김은 편의일 뿐 보안이 아니다.
+  - `users.location_id` 지정 → 그 공장만, NULL → 전 공장 / `viewer` 읽기 전용 / 사용자 관리는 `system_admin` 만.
+- `users` 테이블 쓰기는 클라이언트에서 불가. 생성·수정·비밀번호·삭제는 `/api/users*` (서버가 `api/_lib/auth.js` 로 system_admin 검증) 경유.
+  `server/index.js` 는 `api/` 핸들러를 그대로 재사용한다 — 서버 쪽에 API 로직을 따로 쓰지 말 것.
+- 재고가 바뀌는 입출고 생성·수정·삭제, 단가 저장은 **RPC 로만** (`create_*_atomic`, `update_*_atomic`, `delete_*_atomic`, `save_item_price`). 클라이언트에서 조회→계산→절대값 UPDATE 금지.
+  - 참조번호(`IN-/OUT-YYYYMMDD-NN`)는 RPC 가 서버에서 채번한다. `created_by/updated_by` 도 RPC 가 로그인 사용자로 기록한다.
+- `supabase.rpc()` 인자는 **전부 명시**한다. `undefined` 값은 요청에서 빠져 함수 시그니처가 안 맞는다 → 선택 값은 `?? null`.
+- 목록·집계 조회는 Data API **1,000행 상한**이 있다. 늘어나는 테이블은 `fetchAllRows` (`src/lib/fetchAll.ts`) + 고유 컬럼까지 포함한 정렬로 조회.
+- 공장 종속 쿼리에는 항상 `location_id` 조건. 공장이 아직 선택되지 않았으면 전역 조회로 대체하지 말고 기다린다.
+- Supabase 응답은 실패해도 throw 하지 않는다 — `error` 를 반드시 확인 (`?? 0` 으로 덮지 말 것).
+- 새 마이그레이션의 함수는 `REVOKE EXECUTE ... FROM PUBLIC, anon` 후 필요한 역할에만 GRANT.
+
 ## Coding Patterns
 
 - Zustand 스토어: named export (`useXxxStore`), immutable 패턴 (spread/map/filter)

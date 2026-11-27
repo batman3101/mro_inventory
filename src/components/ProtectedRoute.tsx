@@ -1,12 +1,20 @@
+import { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
+import { Spin } from 'antd';
 import { useAuthStore } from '@/store/auth.store';
 
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const user = useAuthStore((s) => s.user);
+  const isInitialized = useAuthStore((s) => s.isInitialized);
+  const initialize = useAuthStore((s) => s.initialize);
 
-  // user가 persist에서 복원되었으면 인증된 것으로 판단
-  if (!isAuthenticated && !user) return <Navigate to="/login" replace />;
+  useEffect(() => {
+    if (!isInitialized) initialize();
+  }, [isInitialized, initialize]);
+
+  // Wait for the Supabase session check instead of trusting stored state.
+  if (!isInitialized) return <Spin fullscreen />;
+  if (!user) return <Navigate to="/login" replace />;
   return <>{children}</>;
 };
 

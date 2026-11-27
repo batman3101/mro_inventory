@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import i18n from '@/i18n/config';
+import { createFetchGuard } from '@/store/fetchGuard';
 import type { Supplier } from '@/types/database.types';
 import * as suppliersService from '@/services/suppliers.service';
 
@@ -14,19 +15,25 @@ interface SuppliersState {
   deleteSupplier: (supplierId: string) => Promise<void>;
 }
 
+const fetchSuppliersGuard = createFetchGuard();
+
 export const useSupplierStore = create<SuppliersState>((set) => ({
   suppliers: [],
   isLoading: false,
   error: null,
 
   fetchSuppliers: async () => {
-    set({ isLoading: true, error: null });
+    const request = fetchSuppliersGuard.start();
+    // Rows of another factory must not stay visible while the new ones load.
+    set({ isLoading: true, error: null, ...(request.locationChanged ? { suppliers: [] } : {}) });
     try {
       const suppliers = await suppliersService.getAllSuppliers();
+      if (!fetchSuppliersGuard.isLatest(request)) return;
       set({ suppliers, isLoading: false });
     } catch (error) {
+      if (!fetchSuppliersGuard.isLatest(request)) return;
       const message = error instanceof Error ? error.message : i18n.t('errors.suppliers.listFallback');
-      set({ error: message, isLoading: false });
+      set({ suppliers: [], error: message, isLoading: false });
     }
   },
 

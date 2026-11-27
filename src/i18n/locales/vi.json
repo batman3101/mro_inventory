@@ -44,9 +44,7 @@
     "email": "Email",
     "password": "Mật khẩu",
     "loginButton": "Đăng nhập",
-    "loginError": "Email hoặc mật khẩu không đúng.",
-    "devAdminFullName": "Quản trị viên",
-    "devAdminPosition": "Quản trị hệ thống"
+    "loginError": "Email hoặc mật khẩu không đúng."
   },
   "dashboard": {
     "title": "Bảng điều khiển",
@@ -73,6 +71,7 @@
     "noRecentInbound": "Không có dữ liệu nhập kho gần đây.",
     "noRecentOutbound": "Không có dữ liệu xuất kho gần đây.",
     "fetchError": "Lỗi tải dữ liệu bảng điều khiển",
+    "loadFailed": "Không tải được một phần dữ liệu bảng điều khiển. Số liệu hiển thị có thể không chính xác.",
     "unitSuffix": "cái"
   },
   "items": {
@@ -142,6 +141,7 @@
     "bulkErrorsHeader": "Lỗi (dòng không tạo được)",
     "bulkWarningsHeader": "Cảnh báo (đã tạo nhưng cần xác nhận)",
     "bulkErrorInvalidPrice": "Đơn giá không hợp lệ",
+    "bulkErrorInvalidStock": "Tồn tối thiểu, tồn tối đa và điểm đặt hàng lại phải là số nguyên từ 0 trở lên",
     "bulkErrorInvalidDate": "Ngày áp dụng không hợp lệ",
     "bulkParseFailed": "Không thể đọc tệp. Vui lòng kiểm tra định dạng mẫu.",
     "managePrice": "Quản lý đơn giá",
@@ -401,7 +401,9 @@
   },
   "errors": {
     "auth": {
-      "loginFailed": "Đã xảy ra lỗi khi đăng nhập."
+      "loginFailed": "Đã xảy ra lỗi khi đăng nhập.",
+      "inactive": "Tài khoản đã bị vô hiệu hóa. Vui lòng liên hệ quản trị viên.",
+      "noProfile": "Tài khoản chưa được liên kết với thông tin người dùng. Vui lòng liên hệ quản trị viên."
     },
     "location": {
       "notSelected": "Chưa chọn vị trí."

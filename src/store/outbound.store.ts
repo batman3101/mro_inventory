@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import i18n from '@/i18n/config';
+import { createFetchGuard } from '@/store/fetchGuard';
 import type { Outbound } from '@/types/database.types';
 import * as outboundService from '@/services/outbound.service';
 
@@ -19,19 +20,25 @@ interface OutboundState {
   deleteOutbound: (id: string, updatedBy: string) => Promise<void>;
 }
 
+const fetchOutboundGuard = createFetchGuard();
+
 export const useOutboundStore = create<OutboundState>((set) => ({
   outboundRecords: [],
   isLoading: false,
   error: null,
 
   fetchOutbound: async () => {
-    set({ isLoading: true, error: null });
+    const request = fetchOutboundGuard.start();
+    // Rows of another factory must not stay visible while the new ones load.
+    set({ isLoading: true, error: null, ...(request.locationChanged ? { outboundRecords: [] } : {}) });
     try {
       const outboundRecords = await outboundService.getAllOutbound();
+      if (!fetchOutboundGuard.isLatest(request)) return;
       set({ outboundRecords, isLoading: false });
     } catch (error) {
+      if (!fetchOutboundGuard.isLatest(request)) return;
       const message = error instanceof Error ? error.message : i18n.t('errors.outbound.listFallback');
-      set({ error: message, isLoading: false });
+      set({ outboundRecords: [], error: message, isLoading: false });
     }
   },
 

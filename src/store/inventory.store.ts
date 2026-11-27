@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import i18n from '@/i18n/config';
+import { createFetchGuard } from '@/store/fetchGuard';
 import type { ReorderAlert } from '@/types/database.types';
 import type { InventoryWithItem, ReorderAlertWithItem } from '@/services/inventory.service';
 import * as inventoryService from '@/services/inventory.service';
@@ -16,6 +17,10 @@ interface InventoryState {
   resolveAlert: (alertId: string, resolvedBy: string) => Promise<void>;
 }
 
+const fetchInventoryGuard = createFetchGuard();
+
+const fetchAlertsGuard = createFetchGuard();
+
 export const useInventoryStore = create<InventoryState>((set) => ({
   inventoryItems: [],
   alerts: [],
@@ -23,24 +28,32 @@ export const useInventoryStore = create<InventoryState>((set) => ({
   error: null,
 
   fetchInventory: async () => {
-    set({ isLoading: true, error: null });
+    const request = fetchInventoryGuard.start();
+    // Rows of another factory must not stay visible while the new ones load.
+    set({ isLoading: true, error: null, ...(request.locationChanged ? { inventoryItems: [] } : {}) });
     try {
       const inventoryItems = await inventoryService.getAllInventory();
+      if (!fetchInventoryGuard.isLatest(request)) return;
       set({ inventoryItems, isLoading: false });
     } catch (error) {
+      if (!fetchInventoryGuard.isLatest(request)) return;
       const message = error instanceof Error ? error.message : i18n.t('errors.inventory.listFallback');
-      set({ error: message, isLoading: false });
+      set({ inventoryItems: [], error: message, isLoading: false });
     }
   },
 
   fetchAlerts: async () => {
-    set({ isLoading: true, error: null });
+    const request = fetchAlertsGuard.start();
+    // Rows of another factory must not stay visible while the new ones load.
+    set({ isLoading: true, error: null, ...(request.locationChanged ? { alerts: [] } : {}) });
     try {
       const alerts = await inventoryService.getReorderAlerts();
+      if (!fetchAlertsGuard.isLatest(request)) return;
       set({ alerts, isLoading: false });
     } catch (error) {
+      if (!fetchAlertsGuard.isLatest(request)) return;
       const message = error instanceof Error ? error.message : i18n.t('errors.inventory.alertsFallback');
-      set({ error: message, isLoading: false });
+      set({ alerts: [], error: message, isLoading: false });
     }
   },
 

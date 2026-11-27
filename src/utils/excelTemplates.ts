@@ -142,16 +142,20 @@ export function parseExcelDate(raw: unknown): string | null {
   return null;
 }
 
-function toNumber(raw: unknown): number {
-  if (raw === undefined || raw === null || raw === '') return 0;
+// Distinguishes a blank cell (value null) from text that is not a number
+// (ok false), so a typo is reported instead of silently becoming 0 / no price.
+function parseOptionalNumber(raw: unknown): { ok: true; value: number | null } | { ok: false } {
+  if (raw === undefined || raw === null || String(raw).trim() === '') return { ok: true, value: null };
   const n = Number(raw);
-  return Number.isFinite(n) ? n : 0;
+  return Number.isFinite(n) ? { ok: true, value: n } : { ok: false };
 }
 
-function toNullableNumber(raw: unknown): number | null {
-  if (raw === undefined || raw === null || raw === '') return null;
-  const n = Number(raw);
-  return Number.isFinite(n) ? n : null;
+// Stock levels: blank means 0; otherwise a whole number of 0 or more.
+function parseStockLevel(raw: unknown): number | null {
+  const parsed = parseOptionalNumber(raw);
+  if (!parsed.ok) return null;
+  if (parsed.value === null) return 0;
+  return Number.isInteger(parsed.value) && parsed.value >= 0 ? parsed.value : null;
 }
 
 // =============================================================================
@@ -354,9 +358,16 @@ export function parseItemRow(
     if (!effectiveFrom) return { ok: false, error: i18n.t('items.bulkErrorInvalidDate') };
   }
 
-  const unitPrice = toNullableNumber(cellOf(row, 'unitPrice'));
-  if (unitPrice !== null && unitPrice < 0)
+  const parsedPrice = parseOptionalNumber(cellOf(row, 'unitPrice'));
+  if (!parsedPrice.ok || (parsedPrice.value !== null && parsedPrice.value < 0))
     return { ok: false, error: i18n.t('items.bulkErrorInvalidPrice') };
+  const unitPrice = parsedPrice.value;
+
+  const minStock = parseStockLevel(cellOf(row, 'minStock'));
+  const maxStock = parseStockLevel(cellOf(row, 'maxStock'));
+  const reorderPoint = parseStockLevel(cellOf(row, 'reorderPoint'));
+  if (minStock === null || maxStock === null || reorderPoint === null)
+    return { ok: false, error: i18n.t('items.bulkErrorInvalidStock') };
 
   return {
     ok: true,
@@ -368,9 +379,9 @@ export function parseItemRow(
       categoryName: String(cellOf(row, 'categoryName') ?? '').trim(),
       spec: String(cellOf(row, 'spec') ?? '').trim(),
       unit,
-      minStock: toNumber(cellOf(row, 'minStock')),
-      maxStock: toNumber(cellOf(row, 'maxStock')),
-      reorderPoint: toNumber(cellOf(row, 'reorderPoint')),
+      minStock,
+      maxStock,
+      reorderPoint,
       storageLocation: String(cellOf(row, 'storageLocation') ?? '').trim(),
       description: String(cellOf(row, 'description') ?? '').trim(),
       unitPrice,
