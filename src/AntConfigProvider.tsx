@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ConfigProvider } from 'antd';
 import koKR from 'antd/locale/ko_KR';
 import viVN from 'antd/locale/vi_VN';
@@ -25,10 +25,24 @@ const AntConfigProvider = ({ children }: AntConfigProviderProps) => {
         return koKR;
     }
   };
+  const locale = getLocale();
+
+  // message.success() and the other static calls render outside this provider,
+  // so they are handed the same theme and language here (otherwise a toast
+  // stays light and default-blue in dark mode).
+  useEffect(() => {
+    ConfigProvider.config({
+      holderRender: (children) => (
+        <ConfigProvider theme={theme} locale={locale}>
+          {children}
+        </ConfigProvider>
+      ),
+    });
+  }, [theme, locale]);
 
   return (
     <ConfigProvider
-      locale={getLocale()}
+      locale={locale}
       theme={theme}
       warning={{
         strict: false,
