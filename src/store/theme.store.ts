@@ -1,8 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { tokensCss, type ThemeName } from '@/styles/tokens';
+import type { ThemeName } from '@/styles/tokens';
+import { THEME_STORAGE_KEY } from '@/styles/themeBoot';
 
 export type ThemeMode = 'light' | 'dark' | 'system';
+
+const THEME_MODES: readonly ThemeMode[] = ['light', 'dark', 'system'];
 
 interface ThemeState {
   /** What the user chose. 'system' follows the PC setting. */
@@ -24,25 +27,33 @@ export const useThemeStore = create<ThemeState>()(
       },
     }),
     {
-      name: 'mro-theme-storage',
+      name: THEME_STORAGE_KEY,
       partialize: (state) => ({ mode: state.mode }),
+      // The saved value is not trusted (the type says nothing about what is in
+      // localStorage): anything but the three choices becomes 'system'. A
+      // damaged value used to reach the antd theme and leave the whole app,
+      // sign-in included, blank.
+      merge: (persisted, current) => {
+        const saved = (persisted as { mode?: unknown } | null | undefined)?.mode;
+        return {
+          ...current,
+          mode: THEME_MODES.includes(saved as ThemeMode) ? (saved as ThemeMode) : 'system',
+        };
+      },
     }
   )
 );
 
+// Only 'light' and 'dark' are a choice; everything else follows the PC.
+// (index.html applies the same rule before the app loads: styles/themeBoot.ts)
 export const resolveTheme = (state: Pick<ThemeState, 'mode' | 'systemDark'>): ThemeName =>
-  state.mode === 'system' ? (state.systemDark ? 'dark' : 'light') : state.mode;
+  state.mode === 'light' || state.mode === 'dark' ? state.mode : state.systemDark ? 'dark' : 'light';
 
 /** The theme on screen right now. */
 export const useResolvedTheme = (): ThemeName => useThemeStore(resolveTheme);
 
-// The design values reach CSS as variables; <html data-theme> picks the set.
-// Done here, before the first render, so nothing paints in the wrong theme.
-const style = document.createElement('style');
-style.setAttribute('data-app-tokens', '');
-style.textContent = tokensCss();
-document.head.appendChild(style);
-
+// <html data-theme> picks the set of CSS variables (they are already in
+// index.html, see vite.config.ts). Kept in step with the store from here on.
 const applyTheme = (state: ThemeState) => {
   document.documentElement.setAttribute('data-theme', resolveTheme(state));
 };
