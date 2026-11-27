@@ -1,6 +1,6 @@
 import { Card, Form, Input, Button, Alert, Typography, ConfigProvider } from 'antd';
 import { MailOutlined, LockOutlined } from '@ant-design/icons';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '@/store/auth.store';
 
@@ -126,6 +126,10 @@ const Login = () => {
               </Button>
             </Form.Item>
           </Form>
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <Text type="secondary">{t('auth.noAccount')} </Text>
+            <Link to="/signup">{t('auth.signup')}</Link>
+          </div>
         </Card>
       </div>
     </ConfigProvider>

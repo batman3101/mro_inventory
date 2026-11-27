@@ -47,6 +47,8 @@ const InboundPage = () => {
   const [dateRange, setDateRange] = useState<[Dayjs | null, Dayjs | null]>([null, null]);
   const [calcTotal, setCalcTotal] = useState(0);
   const [form] = Form.useForm<InboundFormValues>();
+  // Subscribing avoids reading the form before it mounts inside the modal.
+  const watchedCurrency = Form.useWatch('currency', form);
 
   useEffect(() => { fetchInbound(); fetchItems(); fetchSuppliers(); }, []);
 
@@ -73,30 +75,28 @@ const InboundPage = () => {
   const handleValuesChange = (_: Partial<InboundFormValues>, all: InboundFormValues) =>
     setCalcTotal((all.quantity ?? 0) * (all.unit_price ?? 0));
 
-  useEffect(() => {
-    if (!modalOpen) return;
-    if (editingRecord) {
-      form.setFieldsValue({
+  // The modal destroys its content when hidden, so the Form mounts only after
+  // it opens. Values set from an effect at open time were lost on the first
+  // open (date/currency empty); pass them as initialValues so they apply at
+  // mount instead.
+  const formInitialValues: Partial<InboundFormValues> = editingRecord
+    ? {
         item_id: editingRecord.item_id, supplier_id: editingRecord.supplier_id,
         quantity: editingRecord.quantity, unit_price: editingRecord.unit_price,
         currency: editingRecord.currency, notes: editingRecord.notes,
         inbound_date: dayjs(editingRecord.inbound_date),
-      });
-      setCalcTotal(editingRecord.total_price ?? 0);
-    } else {
-      form.resetFields();
-      form.setFieldsValue({ currency: 'VND', inbound_date: dayjs() });
-      setCalcTotal(0);
-    }
-  }, [modalOpen, editingRecord, form]);
+      }
+    : { currency: 'VND', inbound_date: dayjs() };
 
   const openCreateModal = () => {
     setEditingRecord(null);
+    setCalcTotal(0);
     setModalOpen(true);
   };
 
   const openEditModal = (record: Inbound) => {
     setEditingRecord(record);
+    setCalcTotal(record.total_price ?? 0);
     setModalOpen(true);
   };
 
@@ -250,7 +250,8 @@ const InboundPage = () => {
         okText={t('common.save')} cancelText={t('common.cancel')}
         confirmLoading={submitting} width={560} destroyOnHidden
       >
-        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }} onValuesChange={handleValuesChange}>
+        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }} onValuesChange={handleValuesChange}
+          initialValues={formInitialValues}>
           {!editingRecord && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 13, color: '#666', marginBottom: 4 }}>{t('inbound.referenceNumber')}</div>
@@ -277,7 +278,7 @@ const InboundPage = () => {
             <InputNumber
               min={0} style={{ width: '100%' }}
               formatter={(v) => `${v}`.replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-              addonAfter={CURRENCY_SYMBOL[form.getFieldValue('currency') as string] ?? '₫'}
+              addonAfter={CURRENCY_SYMBOL[watchedCurrency as string] ?? '₫'}
             />
           </Form.Item>
           <Form.Item name="currency" label={t('inbound.currency')}>

@@ -14,6 +14,7 @@ import { getAllItems } from '@/services/items.service';
 import { getAllDepartments } from '@/services/departments.service';
 import { checkStock } from '@/services/outbound.service';
 import { useOutboundStore } from '@/store/outbound.store';
+import { useLocationStore } from '@/store/location.store';
 import { supabase } from '@/lib/supabase';
 
 const { Option } = Select;
@@ -104,11 +105,11 @@ const OutboundPage = () => {
     ).length,
   }), [outboundRecords]);
 
-  useEffect(() => {
-    if (!modalOpen) return;
-    if (editingRecord) {
-      setSelectedLocationId(editingRecord.location_id);
-      form.setFieldsValue({
+  // The modal destroys its content when hidden, so the Form mounts only after
+  // it opens. Values set from an effect at open time were lost on the first
+  // open (date empty); pass them as initialValues so they apply at mount.
+  const formInitialValues: Partial<OutboundFormValues> = editingRecord
+    ? {
         item_id: editingRecord.item_id,
         quantity: editingRecord.quantity,
         requester: editingRecord.requester,
@@ -116,22 +117,21 @@ const OutboundPage = () => {
         purpose: editingRecord.purpose,
         outbound_date: dayjs(editingRecord.outbound_date),
         notes: editingRecord.notes,
-      });
-    } else {
-      form.resetFields();
-      form.setFieldsValue({ outbound_date: dayjs() });
-      setSelectedLocationId('');
-    }
-    setCurrentStock(null);
-  }, [modalOpen, editingRecord, form]);
+      }
+    : { outbound_date: dayjs() };
 
   const openCreateModal = () => {
     setEditingRecord(null);
+    // Default to the factory selected in the sidebar.
+    setSelectedLocationId(useLocationStore.getState().currentLocationId ?? '');
+    setCurrentStock(null);
     setModalOpen(true);
   };
 
   const openEditModal = (record: Outbound) => {
     setEditingRecord(record);
+    setSelectedLocationId(record.location_id);
+    setCurrentStock(null);
     setModalOpen(true);
   };
 
@@ -304,7 +304,8 @@ const OutboundPage = () => {
         open={modalOpen} onOk={handleSubmit} onCancel={handleModalCancel}
         okText={t('common.save')} cancelText={t('common.cancel')}
         confirmLoading={submitting} width={600} destroyOnHidden>
-        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}>
+        <Form form={form} layout="vertical" preserve={false} style={{ marginTop: 8 }}
+          initialValues={formInitialValues}>
           <Form.Item name="item_id" label={t('outbound.itemSelect')} rules={[{ required: true, message: t('items.itemNameRequired') }]}>
             <Select showSearch placeholder={t('outbound.itemSelect')} optionFilterProp="label"
               options={items.map((item) => ({ value: item.item_id, label: `${item.item_code} - ${item.item_name}` }))} />

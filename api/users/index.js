@@ -30,9 +30,12 @@ export default async function handler(req, res) {
       })
     }
 
+    // The sign-up trigger (private.handle_new_auth_user) has already created an
+    // inactive placeholder row for this auth account; upsert turns it into the
+    // real profile.
     const { data: created, error } = await supabaseAdmin
       .from('users')
-      .insert({
+      .upsert({
         ...profile,
         department_id: profile.department_id ?? null,
         location_id: profile.location_id ?? null,
@@ -40,13 +43,14 @@ export default async function handler(req, res) {
         position: profile.position ?? null,
         is_active: profile.is_active ?? true,
         auth_user_id: authData.user.id,
-      })
+      }, { onConflict: 'auth_user_id' })
       .select(USER_COLUMNS)
       .single()
 
     if (error) {
       console.error('사용자 생성 실패:', error)
-      // Do not leave a login without a profile behind.
+      // Do not leave a login or a placeholder profile behind.
+      await supabaseAdmin.from('users').delete().eq('auth_user_id', authData.user.id)
       await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       if (error.code === '23505') {
         return res.status(409).json({ error: '이미 존재하는 사용자명 또는 이메일입니다.' })
