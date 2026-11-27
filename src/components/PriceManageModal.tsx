@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import type { Item, ItemPrice, Supplier } from '@/types/database.types';
 import {
-  getItemPrices, createItemPrice, updateItemPrice, deleteItemPrice,
+  getItemPrices, saveItemPrice, deleteItemPrice,
 } from '@/services/itemPrice.service';
 
 const { Option } = Select;
@@ -58,7 +58,7 @@ export const PriceManageModal = ({
   const loadPrices = async (itemId: string) => {
     setLoading(true);
     try {
-      const fetched = await getItemPrices(itemId);
+      const fetched = await getItemPrices(itemId, locationId);
       setPrices(fetched);
     } catch (e) {
       console.error('load price history failed:', e);
@@ -123,13 +123,8 @@ export const PriceManageModal = ({
         is_current: values.is_current,
         created_by: '',
       };
-      if (editing) {
-        await updateItemPrice(editing.price_id, payload);
-        message.success(t('items.priceUpdateSuccess'));
-      } else {
-        await createItemPrice(payload);
-        message.success(t('items.priceCreateSuccess'));
-      }
+      await saveItemPrice(payload, editing?.price_id ?? null);
+      message.success(t(editing ? 'items.priceUpdateSuccess' : 'items.priceCreateSuccess'));
       closeForm();
       await loadPrices(item.item_id);
       onChange();

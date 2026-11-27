@@ -38,6 +38,20 @@ export async function getUserById(id: string): Promise<SafeUser | null> {
   return data as SafeUser;
 }
 
+// User writes go through the server API, which checks that the caller is an
+// active system_admin. The Supabase access token proves who the caller is.
+async function authConfig() {
+  const { data } = await supabase.auth.getSession();
+  return { headers: { Authorization: `Bearer ${data.session?.access_token ?? ''}` } };
+}
+
+function apiErrorMessage(err: unknown): string {
+  if (axios.isAxiosError(err) && err.response?.data?.error) {
+    return err.response.data.error as string;
+  }
+  return err instanceof Error ? err.message : 'Unknown error';
+}
+
 export type CreateUserData = Omit<
   User,
   'user_id' | 'created_at' | 'updated_at' | 'password_hash'
@@ -47,30 +61,18 @@ export type CreateUserData = Omit<
 
 export async function createUser(data: CreateUserData): Promise<SafeUser> {
   try {
-    const response = await axios.post<{ user: SafeUser }>('/api/users', data);
+    const response = await axios.post<{ user: SafeUser }>('/api/users', data, await authConfig());
     return response.data.user;
   } catch (err) {
-    const serverError =
-      axios.isAxiosError(err) && err.response?.data?.error
-        ? (err.response.data.error as string)
-        : err instanceof Error
-          ? err.message
-          : 'Unknown error';
-    throw new Error(i18n.t('errors.users.createFailed', { message: serverError }));
+    throw new Error(i18n.t('errors.users.createFailed', { message: apiErrorMessage(err) }));
   }
 }
 
 export async function resetUserPassword(id: string, password: string): Promise<void> {
   try {
-    await axios.post(`/api/users/${id}/password`, { password });
+    await axios.post(`/api/users/${id}/password`, { password }, await authConfig());
   } catch (err) {
-    const serverError =
-      axios.isAxiosError(err) && err.response?.data?.error
-        ? (err.response.data.error as string)
-        : err instanceof Error
-          ? err.message
-          : 'Unknown error';
-    throw new Error(i18n.t('errors.users.updateFailed', { message: serverError }));
+    throw new Error(i18n.t('errors.users.updateFailed', { message: apiErrorMessage(err) }));
   }
 }
 
@@ -79,50 +81,34 @@ export type UpdateUserData = Partial<
 >;
 
 export async function updateUser(id: string, data: UpdateUserData): Promise<SafeUser> {
-  const { data: updated, error } = await supabase
-    .from('users')
-    .update(data)
-    .eq('user_id', id)
-    .select(USER_COLUMNS)
-    .single();
-
-  if (error) {
-    throw new Error(i18n.t('errors.users.updateFailed', { message: error.message }));
+  try {
+    const response = await axios.patch<{ user: SafeUser }>(`/api/users/${id}`, data, await authConfig());
+    return response.data.user;
+  } catch (err) {
+    throw new Error(i18n.t('errors.users.updateFailed', { message: apiErrorMessage(err) }));
   }
-
-  return updated as SafeUser;
 }
 
 export async function deactivateUser(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('users')
-    .update({ is_active: false })
-    .eq('user_id', id);
-
-  if (error) {
-    throw new Error(i18n.t('errors.users.deactivateFailed', { message: error.message }));
+  try {
+    await axios.patch(`/api/users/${id}`, { is_active: false }, await authConfig());
+  } catch (err) {
+    throw new Error(i18n.t('errors.users.deactivateFailed', { message: apiErrorMessage(err) }));
   }
 }
 
 export async function activateUser(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('users')
-    .update({ is_active: true })
-    .eq('user_id', id);
-
-  if (error) {
-    throw new Error(i18n.t('errors.users.activateFailed', { message: error.message }));
+  try {
+    await axios.patch(`/api/users/${id}`, { is_active: true }, await authConfig());
+  } catch (err) {
+    throw new Error(i18n.t('errors.users.activateFailed', { message: apiErrorMessage(err) }));
   }
 }
 
 export async function deleteUser(id: string): Promise<void> {
-  const { error } = await supabase
-    .from('users')
-    .delete()
-    .eq('user_id', id)
-    .eq('is_active', false);
-
-  if (error) {
-    throw new Error(i18n.t('errors.users.deleteFailed', { message: error.message }));
+  try {
+    await axios.delete(`/api/users/${id}`, await authConfig());
+  } catch (err) {
+    throw new Error(i18n.t('errors.users.deleteFailed', { message: apiErrorMessage(err) }));
   }
 }

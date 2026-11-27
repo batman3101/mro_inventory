@@ -18,6 +18,7 @@ import {
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
 import { getOptionalLocationId } from '@/services/locationContext';
+import { fetchAllRows } from '@/lib/fetchAll';
 import dayjs, { Dayjs } from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -52,31 +53,27 @@ const Analytics = () => {
       // department_name / item_name / supplier_name are NOT columns on the base
       // tables — they live on departments/items/suppliers and must be embedded
       // via PostgREST joins, mirroring outbound/inbound.service.ts.
-      let outboundQuery = supabase
-        .from('outbound')
-        .select('quantity, outbound_date, items(item_name), departments(department_name)')
-        .gte('outbound_date', startDate)
-        .lte('outbound_date', endDate);
-      let inboundQuery = supabase
-        .from('inbound')
-        .select('quantity, total_price, inbound_date, suppliers(supplier_name)')
-        .gte('inbound_date', startDate)
-        .lte('inbound_date', endDate);
-      if (locationId) {
-        outboundQuery = outboundQuery.eq('location_id', locationId);
-        inboundQuery = inboundQuery.eq('location_id', locationId);
-      }
-
-      const [
-        { data: outboundRaw, error: outboundError },
-        { data: inboundRaw, error: inboundError },
-      ] = await Promise.all([outboundQuery, inboundQuery]);
-
-      if (outboundError) throw outboundError;
-      if (inboundError) throw inboundError;
-
-      const outboundRows = (outboundRaw ?? []) as any[];
-      const inboundRows = (inboundRaw ?? []) as any[];
+      // Page through: a date range can exceed the 1,000-row response cap.
+      const [outboundRows, inboundRows] = await Promise.all([
+        fetchAllRows<any>((from, to) => {
+          let query = supabase
+            .from('outbound')
+            .select('outbound_id, quantity, outbound_date, items(item_name), departments(department_name)')
+            .gte('outbound_date', startDate)
+            .lte('outbound_date', endDate);
+          if (locationId) query = query.eq('location_id', locationId);
+          return query.order('outbound_id').range(from, to);
+        }),
+        fetchAllRows<any>((from, to) => {
+          let query = supabase
+            .from('inbound')
+            .select('inbound_id, quantity, total_price, inbound_date, suppliers(supplier_name)')
+            .gte('inbound_date', startDate)
+            .lte('inbound_date', endDate);
+          if (locationId) query = query.eq('location_id', locationId);
+          return query.order('inbound_id').range(from, to);
+        }),
+      ]);
 
       // Department consumption
       const deptMap = new Map<string, number>();

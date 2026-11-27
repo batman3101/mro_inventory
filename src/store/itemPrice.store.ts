@@ -7,9 +7,9 @@ interface ItemPriceState {
   prices: ItemPrice[];
   isLoading: boolean;
   error: string | null;
-  fetchPrices: (itemId: string) => Promise<void>;
-  createPrice: (data: Parameters<typeof itemPriceService.createItemPrice>[0]) => Promise<ItemPrice>;
-  updatePrice: (priceId: string, data: Partial<ItemPrice>) => Promise<void>;
+  fetchPrices: (itemId: string, locationId: string) => Promise<void>;
+  createPrice: (data: itemPriceService.ItemPriceInput) => Promise<ItemPrice>;
+  updatePrice: (priceId: string, data: itemPriceService.ItemPriceInput) => Promise<void>;
   deletePrice: (priceId: string) => Promise<void>;
 }
 
@@ -18,10 +18,10 @@ export const useItemPriceStore = create<ItemPriceState>((set) => ({
   isLoading: false,
   error: null,
 
-  fetchPrices: async (itemId) => {
+  fetchPrices: async (itemId, locationId) => {
     set({ isLoading: true, error: null });
     try {
-      const prices = await itemPriceService.getItemPrices(itemId);
+      const prices = await itemPriceService.getItemPrices(itemId, locationId);
       set({ prices, isLoading: false });
     } catch (error) {
       const message = error instanceof Error ? error.message : i18n.t('errors.itemPrice.listFallback');
@@ -30,13 +30,13 @@ export const useItemPriceStore = create<ItemPriceState>((set) => ({
   },
 
   createPrice: async (data) => {
-    const created = await itemPriceService.createItemPrice(data);
+    const created = await itemPriceService.saveItemPrice(data);
     set((state) => ({ prices: [created, ...state.prices] }));
     return created;
   },
 
   updatePrice: async (priceId, data) => {
-    const updated = await itemPriceService.updateItemPrice(priceId, data);
+    const updated = await itemPriceService.saveItemPrice(data, priceId);
     set((state) => ({
       prices: state.prices.map((price) =>
         price.price_id === priceId ? { ...price, ...updated } : price

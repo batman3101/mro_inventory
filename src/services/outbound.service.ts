@@ -2,24 +2,35 @@ import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
 import type { Outbound } from '@/types/database.types';
 import { getOptionalLocationId } from '@/services/locationContext';
+import { fetchAllRows } from '@/lib/fetchAll';
+
+type OutboundRow = Outbound & {
+  items: { item_code: string; item_name: string; unit: string } | null;
+  departments: { department_name: string } | null;
+};
 
 export async function getAllOutbound(): Promise<Outbound[]> {
   const locationId = getOptionalLocationId();
-  let query = supabase
-    .from('outbound')
-    .select('*, items(item_code, item_name, unit), departments(department_name)');
-  if (locationId) {
-    query = query.eq('location_id', locationId);
+  let data: OutboundRow[];
+  try {
+    data = await fetchAllRows<OutboundRow>((from, to) => {
+      let query = supabase
+        .from('outbound')
+        .select('*, items(item_code, item_name, unit), departments(department_name)');
+      if (locationId) {
+        query = query.eq('location_id', locationId);
+      }
+      return query
+        .order('outbound_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .order('outbound_id', { ascending: true })
+        .range(from, to) as unknown as PromiseLike<{ data: OutboundRow[] | null; error: { message: string } | null }>;
+    });
+  } catch (e) {
+    throw new Error(i18n.t('errors.outbound.fetchFailed', { message: e instanceof Error ? e.message : String(e) }));
   }
-  const { data, error } = await query
-    .order('outbound_date', { ascending: false })
-    .order('created_at', { ascending: false });
 
-  if (error) {
-    throw new Error(i18n.t('errors.outbound.fetchFailed', { message: error.message }));
-  }
-
-  return (data ?? []).map((row: any) => ({
+  return data.map((row) => ({
     ...row,
     item_code: row.items?.item_code ?? '',
     item_name: row.items?.item_name ?? '',
@@ -53,36 +64,6 @@ export async function getOutboundById(id: string): Promise<Outbound | null> {
   };
 }
 
-export async function generateReferenceNumber(): Promise<string> {
-  const now = new Date();
-  const yyyymmdd =
-    String(now.getFullYear()) +
-    String(now.getMonth() + 1).padStart(2, '0') +
-    String(now.getDate()).padStart(2, '0');
-  const prefix = `OUT-${yyyymmdd}-`;
-
-  const { data, error } = await supabase
-    .from('outbound')
-    .select('reference_number')
-    .like('reference_number', `${prefix}%`)
-    .order('reference_number', { ascending: false })
-    .limit(1);
-
-  if (error) {
-    throw new Error(i18n.t('errors.outbound.generateRefFailed', { message: error.message }));
-  }
-
-  if (!data || data.length === 0) {
-    return `${prefix}01`;
-  }
-
-  const lastRef = data[0].reference_number as string;
-  const lastSeq = parseInt(lastRef.split('-').pop() ?? '0', 10);
-  const nextSeq = String(lastSeq + 1).padStart(2, '0');
-
-  return `${prefix}${nextSeq}`;
-}
-
 export async function checkStock(
   itemId: string,
   locationId: string
@@ -104,52 +85,44 @@ export async function checkStock(
   return data?.current_quantity ?? 0;
 }
 
+// One DB transaction (create_outbound_atomic): locks the stock row, rejects
+// over-issue, writes the ledger row with a server-side reference number and
+// deducts stock. Nothing is left behind on failure.
 export async function createOutbound(
   data: Omit<
     Outbound,
     'outbound_id' | 'created_at' | 'item_code' | 'item_name' | 'department_name' | 'item_unit'
   >
 ): Promise<Outbound> {
-  const currentQty = await checkStock(data.item_id, data.location_id);
+  // Every argument must be present (undefined keys are dropped and the RPC
+  // signature would no longer match), so optional fields fall back to null.
+  const { data: outboundId, error } = await supabase.rpc('create_outbound_atomic', {
+    p_outbound_date: data.outbound_date,
+    p_item_id: data.item_id,
+    p_location_id: data.location_id,
+    p_quantity: data.quantity,
+    p_requester: data.requester,
+    p_department_id: data.department_id ?? null,
+    p_purpose: data.purpose ?? null,
+    p_cost_center: data.cost_center ?? null,
+    p_notes: data.notes ?? null,
+    p_created_by: data.created_by ?? null,
+  });
 
-  if (currentQty < data.quantity) {
-    throw new Error(
-      i18n.t('errors.outbound.stockInsufficient', {
-        current: currentQty,
-        requested: data.quantity,
-      })
-    );
+  if (error) {
+    const insufficient = error.message.match(/inventory_insufficient:(\d+)/);
+    if (insufficient) {
+      throw new Error(
+        i18n.t('errors.outbound.stockInsufficient', {
+          current: Number(insufficient[1]),
+          requested: data.quantity,
+        })
+      );
+    }
+    throw new Error(i18n.t('errors.outbound.createFailed', { message: error.message }));
   }
 
-  const referenceNumber = await generateReferenceNumber();
-
-  const { data: created, error: insertError } = await supabase
-    .from('outbound')
-    .insert({ ...data, reference_number: referenceNumber })
-    .select('*, items(item_code, item_name, unit), departments(department_name)')
-    .single();
-
-  if (insertError) {
-    throw new Error(i18n.t('errors.outbound.createFailed', { message: insertError.message }));
-  }
-
-  const { error: updateError } = await supabase
-    .from('inventory')
-    .update({ current_quantity: currentQty - data.quantity })
-    .eq('item_id', data.item_id)
-    .eq('location_id', data.location_id);
-
-  if (updateError) {
-    throw new Error(i18n.t('errors.outbound.stockDeductFailed', { message: updateError.message }));
-  }
-
-  return {
-    ...created,
-    item_code: (created as any).items?.item_code ?? '',
-    item_name: (created as any).items?.item_name ?? '',
-    item_unit: (created as any).items?.unit ?? '',
-    department_name: (created as any).departments?.department_name ?? '',
-  };
+  return getOutboundById(outboundId as string) as Promise<Outbound>;
 }
 
 export async function updateOutbound(

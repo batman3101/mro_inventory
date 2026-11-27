@@ -17,7 +17,7 @@ import { z } from 'zod';
 import type { ColumnsType } from 'antd/es/table';
 import type { Item, Category, ItemPrice, Supplier } from '@/types/database.types';
 import { getAllItems, createItem, updateItem, deleteItem } from '@/services/items.service';
-import { createItemPrice, upsertItemPrice } from '@/services/itemPrice.service';
+import { saveItemPrice } from '@/services/itemPrice.service';
 import { getOptionalLocationId } from '@/services/locationContext';
 import { supabase } from '@/lib/supabase';
 import {
@@ -224,7 +224,7 @@ const Items = () => {
         if (priceChanged) {
           const locationId = getOptionalLocationId();
           if (!locationId) throw new Error(t('errors.location.notSelected'));
-          await upsertItemPrice({
+          await saveItemPrice({
             item_id: editingItem.item_id,
             location_id: locationId,
             unit_price: unit_price as number,
@@ -256,7 +256,7 @@ const Items = () => {
         if (unit_price && unit_price > 0 && created) {
           const locationId = getOptionalLocationId();
           if (!locationId) throw new Error(t('errors.location.notSelected'));
-          await createItemPrice({
+          await saveItemPrice({
             item_id: created.item_id,
             location_id: locationId,
             unit_price,
@@ -439,7 +439,7 @@ const Items = () => {
           // and excel rows that share (item, supplier, date) would otherwise
           // fail the unique constraint — upsert overwrites the existing price.
           if (r.unitPrice !== null && r.unitPrice > 0) {
-            await upsertItemPrice({
+            await saveItemPrice({
               item_id: itemId,
               location_id: locationId,
               unit_price: r.unitPrice,

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Row, Col, Card, Statistic, Select, DatePicker, Typography, Space } from 'antd';
+import { Row, Col, Card, Statistic, Select, DatePicker, Typography, Space, Alert } from 'antd';
 import {
   InboxOutlined,
   WarningOutlined,
@@ -20,6 +20,8 @@ import {
 } from 'recharts';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '@/lib/supabase';
+import { fetchAllRows } from '@/lib/fetchAll';
+import { getLocationId, getOptionalLocationId } from '@/services/locationContext';
 import dayjs, { type Dayjs } from 'dayjs';
 
 const { RangePicker } = DatePicker;
@@ -47,6 +49,13 @@ interface SummaryStats {
   totalSuppliers: number;
 }
 
+// Supabase reports query failures in the response instead of throwing; an
+// unchecked error would otherwise be shown as a normal 0 / empty value.
+function checked<R extends { error: { message: string } | null }>(res: R): R {
+  if (res.error) throw new Error(res.error.message);
+  return res;
+}
+
 const Dashboard = () => {
   const { t } = useTranslation();
   const [stats, setStats] = useState<SummaryStats>({
@@ -61,6 +70,7 @@ const Dashboard = () => {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<PeriodType>('7days');
   const [customRange, setCustomRange] = useState<[Dayjs, Dayjs] | null>(null);
+  const [loadError, setLoadError] = useState(false);
 
   const getDateRange = (): [string, string] => {
     const end = dayjs().format('YYYY-MM-DD');
@@ -74,29 +84,39 @@ const Dashboard = () => {
   };
 
   const fetchStats = async () => {
-    const [
-      { data: inventoryData },
-      { count: lowStock },
-      { count: zeroStock },
-      { count: suppliers },
-    ] = await Promise.all([
-      supabase.from('inventory').select('current_quantity'),
+    // Every figure is for the factory selected in the sidebar.
+    const locationId = getLocationId();
+    const [inventoryData, { count: lowStock }, { count: zeroStock }, { count: suppliers }] = await Promise.all([
+      fetchAllRows((from, to) =>
+        supabase
+          .from('inventory')
+          .select('inventory_id, current_quantity')
+          .eq('location_id', locationId)
+          .order('inventory_id')
+          .range(from, to)
+      ),
       supabase
         .from('inventory')
         .select('*', { count: 'exact', head: true })
+        .eq('location_id', locationId)
         .gt('current_quantity', 0)
-        .lt('current_quantity', 10),
+        .lt('current_quantity', 10)
+        .then(checked),
       supabase
         .from('inventory')
         .select('*', { count: 'exact', head: true })
-        .eq('current_quantity', 0),
+        .eq('location_id', locationId)
+        .eq('current_quantity', 0)
+        .then(checked),
       supabase
         .from('suppliers')
         .select('*', { count: 'exact', head: true })
-        .eq('status', 'ACTIVE'),
+        .eq('location_id', locationId)
+        .eq('status', 'ACTIVE')
+        .then(checked),
     ]);
 
-    const totalStock = (inventoryData ?? []).reduce(
+    const totalStock = inventoryData.reduce(
       (sum, row) => sum + (row.current_quantity ?? 0),
       0
     );
@@ -112,15 +132,18 @@ const Dashboard = () => {
   // Resolves a unit price per item: current managed price (item_prices.is_current)
   // first, then the most recent inbound unit price as fallback. Set-based to avoid
   // an N+1 query per outbound row.
-  const resolveUnitPrices = async (itemIds: string[]): Promise<Map<string, number>> => {
+  const resolveUnitPrices = async (itemIds: string[], locationId: string): Promise<Map<string, number>> => {
     const priceMap = new Map<string, number>();
     if (itemIds.length === 0) return priceMap;
 
-    const { data: currentPrices } = await supabase
-      .from('item_prices')
-      .select('item_id, unit_price')
-      .in('item_id', itemIds)
-      .eq('is_current', true);
+    const { data: currentPrices } = checked(
+      await supabase
+        .from('item_prices')
+        .select('item_id, unit_price')
+        .eq('location_id', locationId)
+        .in('item_id', itemIds)
+        .eq('is_current', true)
+    );
 
     for (const row of currentPrices ?? []) {
       priceMap.set(row.item_id, Number(row.unit_price ?? 0));
@@ -128,15 +151,20 @@ const Dashboard = () => {
 
     const missing = itemIds.filter((id) => !priceMap.has(id));
     if (missing.length > 0) {
-      const { data: inboundPrices } = await supabase
-        .from('inbound')
-        .select('item_id, unit_price, inbound_date')
-        .in('item_id', missing)
-        .order('inbound_date', { ascending: false })
-        .order('created_at', { ascending: false });
+      const inboundPrices = await fetchAllRows((from, to) =>
+        supabase
+          .from('inbound')
+          .select('inbound_id, item_id, unit_price, inbound_date')
+          .eq('location_id', locationId)
+          .in('item_id', missing)
+          .order('inbound_date', { ascending: false })
+          .order('created_at', { ascending: false })
+          .order('inbound_id')
+          .range(from, to)
+      );
 
       // Rows are newest-first, so the first hit per item is its latest price.
-      for (const row of inboundPrices ?? []) {
+      for (const row of inboundPrices) {
         if (!priceMap.has(row.item_id)) {
           priceMap.set(row.item_id, Number(row.unit_price ?? 0));
         }
@@ -148,18 +176,29 @@ const Dashboard = () => {
 
   const fetchChartData = async () => {
     const [startDate, endDate] = getDateRange();
+    const locationId = getLocationId();
 
-    const [{ data: inboundRaw }, { data: outboundRaw }] = await Promise.all([
-      supabase
-        .from('inbound')
-        .select('inbound_date, total_price')
-        .gte('inbound_date', startDate)
-        .lte('inbound_date', endDate),
-      supabase
-        .from('outbound')
-        .select('outbound_date, item_id, quantity')
-        .gte('outbound_date', startDate)
-        .lte('outbound_date', endDate),
+    const [inboundRaw, outboundRaw] = await Promise.all([
+      fetchAllRows((from, to) =>
+        supabase
+          .from('inbound')
+          .select('inbound_id, inbound_date, total_price')
+          .eq('location_id', locationId)
+          .gte('inbound_date', startDate)
+          .lte('inbound_date', endDate)
+          .order('inbound_id')
+          .range(from, to)
+      ),
+      fetchAllRows((from, to) =>
+        supabase
+          .from('outbound')
+          .select('outbound_id, outbound_date, item_id, quantity')
+          .eq('location_id', locationId)
+          .gte('outbound_date', startDate)
+          .lte('outbound_date', endDate)
+          .order('outbound_id')
+          .range(from, to)
+      ),
     ]);
 
     const dateMap = new Map<string, { inbound: number; outbound: number }>();
@@ -170,7 +209,7 @@ const Dashboard = () => {
       cursor = cursor.add(1, 'day');
     }
 
-    for (const row of inboundRaw ?? []) {
+    for (const row of inboundRaw) {
       const key = dayjs(row.inbound_date).format('MM/DD');
       if (dateMap.has(key)) {
         dateMap.get(key)!.inbound += Number(row.total_price ?? 0);
@@ -178,10 +217,10 @@ const Dashboard = () => {
     }
 
     // outbound stores no amount — value each issued line at its item's unit price.
-    const outboundItemIds = [...new Set((outboundRaw ?? []).map((r) => r.item_id))];
-    const unitPriceMap = await resolveUnitPrices(outboundItemIds);
+    const outboundItemIds = [...new Set(outboundRaw.map((r) => r.item_id))];
+    const unitPriceMap = await resolveUnitPrices(outboundItemIds, locationId);
 
-    for (const row of outboundRaw ?? []) {
+    for (const row of outboundRaw) {
       const key = dayjs(row.outbound_date).format('MM/DD');
       if (dateMap.has(key)) {
         const unitPrice = unitPriceMap.get(row.item_id) ?? 0;
@@ -206,17 +245,22 @@ const Dashboard = () => {
       created_at: string | null;
       items: { item_code: string; item_name: string; unit: string } | null;
     };
+    const locationId = getLocationId();
     const [{ data: inbound }, { data: outbound }] = await Promise.all([
       supabase
         .from('inbound')
         .select('quantity, created_at, items(item_code, item_name, unit)')
+        .eq('location_id', locationId)
         .order('created_at', { ascending: false })
-        .limit(5),
+        .limit(5)
+        .then(checked),
       supabase
         .from('outbound')
         .select('quantity, created_at, items(item_code, item_name, unit)')
+        .eq('location_id', locationId)
         .order('created_at', { ascending: false })
-        .limit(5),
+        .limit(5)
+        .then(checked),
     ]);
 
     const project = (rows: unknown) => ((rows ?? []) as RecentRow[]).map((r) => ({
@@ -233,11 +277,16 @@ const Dashboard = () => {
 
   useEffect(() => {
     const fetchAll = async () => {
+      // MainLayout picks the factory right after login and remounts this page;
+      // until then there is nothing to show (and no global fallback query).
+      if (!getOptionalLocationId()) return;
       setLoading(true);
+      setLoadError(false);
       try {
         await Promise.all([fetchStats(), fetchChartData(), fetchRecentRecords()]);
       } catch (error) {
         console.error(t('dashboard.fetchError'), error);
+        setLoadError(true);
       } finally {
         setLoading(false);
       }
@@ -246,7 +295,11 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    fetchChartData();
+    if (!getOptionalLocationId()) return;
+    fetchChartData().catch((error) => {
+      console.error(t('dashboard.fetchError'), error);
+      setLoadError(true);
+    });
   }, [period, customRange]);
 
   const formatYAxis = (value: number) => {
@@ -267,6 +320,10 @@ const Dashboard = () => {
       <Typography.Title level={3} style={{ marginBottom: '24px' }}>
         {t('dashboard.title')}
       </Typography.Title>
+
+      {loadError && (
+        <Alert type="error" showIcon message={t('dashboard.loadFailed')} style={{ marginBottom: 16 }} />
+      )}
 
       {/* Summary Cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: '24px' }}>

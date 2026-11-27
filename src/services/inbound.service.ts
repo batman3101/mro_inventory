@@ -2,24 +2,35 @@ import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
 import type { Inbound } from '@/types/database.types';
 import { getOptionalLocationId } from '@/services/locationContext';
+import { fetchAllRows } from '@/lib/fetchAll';
+
+type InboundRow = Inbound & {
+  items: { item_code: string; item_name: string; unit: string } | null;
+  suppliers: { supplier_name: string } | null;
+};
 
 export async function getAllInbound(): Promise<Inbound[]> {
   const locationId = getOptionalLocationId();
-  let query = supabase
-    .from('inbound')
-    .select('*, items(item_code, item_name, unit), suppliers(supplier_name)');
-  if (locationId) {
-    query = query.eq('location_id', locationId);
+  let data: InboundRow[];
+  try {
+    data = await fetchAllRows<InboundRow>((from, to) => {
+      let query = supabase
+        .from('inbound')
+        .select('*, items(item_code, item_name, unit), suppliers(supplier_name)');
+      if (locationId) {
+        query = query.eq('location_id', locationId);
+      }
+      return query
+        .order('inbound_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .order('inbound_id', { ascending: true })
+        .range(from, to) as unknown as PromiseLike<{ data: InboundRow[] | null; error: { message: string } | null }>;
+    });
+  } catch (e) {
+    throw new Error(i18n.t('errors.inbound.fetchFailed', { message: e instanceof Error ? e.message : String(e) }));
   }
-  const { data, error } = await query
-    .order('inbound_date', { ascending: false })
-    .order('created_at', { ascending: false });
 
-  if (error) {
-    throw new Error(i18n.t('errors.inbound.fetchFailed', { message: error.message }));
-  }
-
-  return (data ?? []).map((row: any) => ({
+  return data.map((row) => ({
     ...row,
     item_code: row.items?.item_code ?? '',
     item_name: row.items?.item_name ?? '',
@@ -51,96 +62,31 @@ export async function getInboundById(id: string): Promise<Inbound | null> {
   };
 }
 
-export async function generateReferenceNumber(): Promise<string> {
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = String(today.getMonth() + 1).padStart(2, '0');
-  const dd = String(today.getDate()).padStart(2, '0');
-  const dateStr = `${yyyy}${mm}${dd}`;
-  const prefix = `IN-${dateStr}-`;
-
-  const { data, error } = await supabase
-    .from('inbound')
-    .select('reference_number')
-    .like('reference_number', `${prefix}%`)
-    .order('reference_number', { ascending: false })
-    .limit(1);
-
-  if (error) {
-    throw new Error(i18n.t('errors.inbound.generateRefFailed', { message: error.message }));
-  }
-
-  if (!data || data.length === 0) {
-    return `${prefix}01`;
-  }
-
-  // Reference is `IN-YYYYMMDD-NN` so the trailing seq lives after the last `-`.
-  // Reading after the last hyphen lets the seq grow past 99 if a busy day rolls over.
-  const lastNumber = data[0].reference_number as string;
-  const lastSeq = parseInt(lastNumber.split('-').pop() ?? '0', 10);
-  const nextSeq = String(lastSeq + 1).padStart(2, '0');
-
-  return `${prefix}${nextSeq}`;
-}
-
+// One DB transaction (create_inbound_atomic): ledger row + stock increase +
+// server-side reference number. A failure leaves neither behind, and
+// concurrent creates cannot overwrite each other's stock or reuse a number.
 export async function createInbound(
   data: Omit<Inbound, 'inbound_id' | 'created_at' | 'reference_number' | 'total_price' | 'item_code' | 'item_name' | 'supplier_name' | 'item_unit'>
 ): Promise<Inbound> {
-  const reference_number = await generateReferenceNumber();
-  const total_price = data.quantity * data.unit_price;
-
-  const { data: created, error } = await supabase
-    .from('inbound')
-    .insert({ ...data, reference_number, total_price })
-    .select()
-    .single();
+  // Every argument must be present (undefined keys are dropped and the RPC
+  // signature would no longer match), so optional fields fall back to null.
+  const { data: inboundId, error } = await supabase.rpc('create_inbound_atomic', {
+    p_inbound_date: data.inbound_date,
+    p_item_id: data.item_id,
+    p_supplier_id: data.supplier_id ?? null,
+    p_location_id: data.location_id,
+    p_quantity: data.quantity,
+    p_unit_price: data.unit_price ?? null,
+    p_currency: data.currency || 'VND',
+    p_notes: data.notes ?? null,
+    p_created_by: data.created_by ?? null,
+  });
 
   if (error) {
     throw new Error(i18n.t('errors.inbound.createFailed', { message: error.message }));
   }
 
-  const { data: existing, error: invFetchError } = await supabase
-    .from('inventory')
-    .select('inventory_id, current_quantity')
-    .eq('item_id', data.item_id)
-    .eq('location_id', data.location_id)
-    .maybeSingle();
-
-  if (invFetchError) {
-    throw new Error(i18n.t('errors.inbound.inventoryFetchFailed', { message: invFetchError.message }));
-  }
-
-  if (existing) {
-    const { error: updateError } = await supabase
-      .from('inventory')
-      .update({
-        current_quantity: existing.current_quantity + data.quantity,
-        updated_at: new Date().toISOString(),
-        updated_by: data.created_by,
-      })
-      .eq('inventory_id', existing.inventory_id);
-
-    if (updateError) {
-      throw new Error(i18n.t('errors.inbound.inventoryUpdateFailed', { message: updateError.message }));
-    }
-  } else {
-    const { error: insertError } = await supabase
-      .from('inventory')
-      .insert({
-        item_id: data.item_id,
-        location_id: data.location_id,
-        current_quantity: data.quantity,
-        last_count_date: new Date().toISOString(),
-        storage_location: '',
-        updated_by: data.created_by,
-      });
-
-    if (insertError) {
-      throw new Error(i18n.t('errors.inbound.inventoryCreateFailed', { message: insertError.message }));
-    }
-  }
-
-  return getInboundById(created.inbound_id) as Promise<Inbound>;
+  return getInboundById(inboundId as string) as Promise<Inbound>;
 }
 
 export async function updateInbound(

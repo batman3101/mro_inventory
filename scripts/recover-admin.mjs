@@ -1,15 +1,14 @@
 // One-off admin password recovery / inspection helper.
 //   node scripts/recover-admin.mjs                      → list system_admin users (read-only)
-//   node scripts/recover-admin.mjs <email> <newPass>    → reset that user's password (bcrypt) + activate
+//   node scripts/recover-admin.mjs <email> <newPass>    → reset that user's login password + activate
 //
 // Reads VITE_SUPABASE_URL + SUPABASE_SERVICE_KEY from .env.local and talks to
-// Supabase with the service-role key (bypasses RLS). Mirrors the server's
-// bcrypt.hash(password, 10) so the new password works with /api/auth/login.
+// Supabase with the service-role key (bypasses RLS). Passwords live in
+// Supabase Auth (auth.users), linked through users.auth_user_id.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import { createClient } from '@supabase/supabase-js';
-import bcrypt from 'bcryptjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -59,12 +58,11 @@ if (!newPassword || newPassword.length < 6) {
   process.exit(1);
 }
 
-const password_hash = await bcrypt.hash(newPassword, 10);
 const { data, error } = await supabase
   .from('users')
-  .update({ password_hash, is_active: true, updated_at: new Date().toISOString() })
+  .update({ is_active: true, updated_at: new Date().toISOString() })
   .eq('email', email)
-  .select('user_id, username, email, role, is_active');
+  .select('user_id, username, email, role, is_active, auth_user_id');
 
 if (error) {
   console.error('❌ 변경 실패:', error.message);
@@ -72,6 +70,17 @@ if (error) {
 }
 if (!data || data.length === 0) {
   console.error(`❌ 해당 이메일의 사용자를 찾지 못했습니다: ${email}`);
+  process.exit(1);
+}
+if (!data[0].auth_user_id) {
+  console.error('❌ 로그인 계정이 연결되지 않았습니다. 먼저 node scripts/migrate-users-to-auth.mjs --apply 를 실행하세요.');
+  process.exit(1);
+}
+const { error: authError } = await supabase.auth.admin.updateUserById(data[0].auth_user_id, {
+  password: newPassword,
+});
+if (authError) {
+  console.error('❌ 비밀번호 변경 실패:', authError.message);
   process.exit(1);
 }
 console.log(`✅ 비밀번호 재설정 완료: ${data[0].email} (active=${data[0].is_active})`);

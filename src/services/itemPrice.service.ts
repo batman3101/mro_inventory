@@ -2,11 +2,13 @@ import { supabase } from '@/lib/supabase';
 import i18n from '@/i18n/config';
 import type { ItemPrice } from '@/types/database.types';
 
-export async function getItemPrices(itemId: string): Promise<ItemPrice[]> {
+// Prices are per factory: history is read for the given factory only.
+export async function getItemPrices(itemId: string, locationId: string): Promise<ItemPrice[]> {
   const { data, error } = await supabase
     .from('item_prices')
     .select('*')
     .eq('item_id', itemId)
+    .eq('location_id', locationId)
     .order('effective_from', { ascending: false });
 
   if (error) {
@@ -34,80 +36,43 @@ export async function getCurrentPrice(itemId: string): Promise<ItemPrice | null>
   return data;
 }
 
-export async function createItemPrice(
-  data: Omit<ItemPrice, 'price_id' | 'created_at' | 'supplier_name' | 'source'>
-): Promise<ItemPrice> {
-  if (data.is_current) {
-    const { error: updateError } = await supabase
-      .from('item_prices')
-      .update({ is_current: false })
-      .eq('item_id', data.item_id);
+export type ItemPriceInput = Omit<ItemPrice, 'price_id' | 'created_at' | 'supplier_name' | 'source'>;
 
-    if (updateError) {
-      throw new Error(i18n.t('errors.itemPrice.deactivateCurrentFailed', { message: updateError.message }));
-    }
-  }
-
-  const { data: created, error } = await supabase
-    .from('item_prices')
-    .insert(data)
-    .select()
-    .single();
-
-  if (error) {
-    throw new Error(i18n.t('errors.itemPrice.createFailed', { message: error.message }));
-  }
-
-  return created;
-}
-
-// Bulk import path: same (item_id, supplier_id, effective_from) may appear
-// multiple times across re-uploads or duplicate excel rows. Use upsert against
-// the unique constraint so the second occurrence updates the price instead of
-// failing with "duplicate key value violates unique constraint".
-export async function upsertItemPrice(
-  data: Omit<ItemPrice, 'price_id' | 'created_at' | 'supplier_name' | 'source'>
-): Promise<ItemPrice> {
-  if (data.is_current) {
-    const { error: updateError } = await supabase
-      .from('item_prices')
-      .update({ is_current: false })
-      .eq('item_id', data.item_id);
-
-    if (updateError) {
-      throw new Error(i18n.t('errors.itemPrice.deactivateCurrentFailed', { message: updateError.message }));
-    }
-  }
-
-  const { data: upserted, error } = await supabase
-    .from('item_prices')
-    .upsert(data, { onConflict: 'item_id,supplier_id,effective_from' })
-    .select()
-    .single();
+// Single atomic RPC (save_item_price). Without priceId it upserts on
+// (item, factory, supplier, effective_from); with priceId it updates that row,
+// which must belong to the same item and factory. When is_current is true the
+// other current price of the same item in the same factory is cleared in the
+// same transaction, so a failure never leaves the item without a price and
+// there is never more than one current price.
+export async function saveItemPrice(data: ItemPriceInput, priceId: string | null = null): Promise<ItemPrice> {
+  const { data: savedId, error } = await supabase.rpc('save_item_price', {
+    p_price_id: priceId,
+    p_item_id: data.item_id,
+    p_location_id: data.location_id,
+    p_unit_price: data.unit_price,
+    p_currency: data.currency || 'VND',
+    p_supplier_id: data.supplier_id ?? null,
+    p_effective_from: data.effective_from,
+    p_effective_to: data.effective_to ?? null,
+    p_is_current: data.is_current ?? true,
+    p_created_by: data.created_by ?? null,
+  });
 
   if (error) {
-    throw new Error(i18n.t('errors.itemPrice.createFailed', { message: error.message }));
+    throw new Error(i18n.t(priceId ? 'errors.itemPrice.updateFailed' : 'errors.itemPrice.createFailed', { message: error.message }));
   }
 
-  return upserted;
-}
-
-export async function updateItemPrice(
-  priceId: string,
-  data: Partial<Omit<ItemPrice, 'price_id' | 'created_at' | 'supplier_name' | 'source'>>
-): Promise<ItemPrice> {
-  const { data: updated, error } = await supabase
+  const { data: saved, error: fetchError } = await supabase
     .from('item_prices')
-    .update(data)
-    .eq('price_id', priceId)
-    .select()
+    .select('*')
+    .eq('price_id', savedId as string)
     .single();
 
-  if (error) {
-    throw new Error(i18n.t('errors.itemPrice.updateFailed', { message: error.message }));
+  if (fetchError) {
+    throw new Error(i18n.t('errors.itemPrice.fetchFailed', { message: fetchError.message }));
   }
 
-  return updated;
+  return saved;
 }
 
 export async function deleteItemPrice(priceId: string): Promise<void> {
