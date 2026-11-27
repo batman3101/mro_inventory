@@ -9,8 +9,9 @@ export function useChartTheme() {
   return useMemo(() => {
     const c = palettes[themeName];
     return {
-      /** Series colours in order. Past the four chart colours come two greys (a pie can have six slices). */
-      series: [c.viz1, c.viz2, c.viz3, c.viz4, c.ink3, c.line2],
+      /** Series colours in order. Past the four chart colours come two greys (a pie can have six slices);
+       *  both keep 3:1 against the surface (the border grey line2 did not: 1.55:1). */
+      series: [c.viz1, c.viz2, c.viz3, c.viz4, c.ink3, c.lineInput],
       inbound: c.viz1,
       outbound: c.viz2,
       /** The edge between pie slices. */

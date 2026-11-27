@@ -62,14 +62,21 @@
 ## 화면 스타일 (2026-11-27 WorkBoard 스타일 적용 이후)
 
 - 색·글꼴·모서리·행 높이 값은 **`src/styles/tokens.ts` 한 곳**에만 적는다 (라이트/다크 두 벌). 다른 파일에 `#hex`·`rgb()` 를 직접 쓰지 않는다.
-  - CSS 는 `var(--accent)` 같은 변수로 (`theme.store.ts` 가 tokens.ts 에서 만들어 넣는다), antd 는 `src/styles/antdTheme.ts`, 차트(recharts)는 `useChartTheme()` (`src/components/chartTheme.ts`) 로 읽는다.
+  - CSS 는 `var(--accent)` 같은 변수로, antd 는 `src/styles/antdTheme.ts`, 차트(recharts)는 `useChartTheme()` (`src/components/chartTheme.ts`) 로 읽는다.
+  - CSS 변수는 빌드할 때 `vite.config.ts` 의 `theme-boot` 가 tokens.ts 에서 만들어 `index.html` 의 `<head>` 에 넣는다 (`src/styles/themeBoot.ts`). 앱의 JS 가 도착하기 전 첫 화면부터 맞는 테마로 그리기 위해서다. `index.html` 에 색을 직접 적지 말 것.
+  - 한곳 관리 대상은 색과 앱 전체가 같이 쓰는 크기(모서리·행 높이·상단바·메뉴 폭)다. 한 규칙에서만 쓰는 여백·글자 크기는 `app.css` 에 숫자로 둔다.
   - 값을 바꾸거나 더하면 `npm run lint:contrast` 로 글자 대비(WCAG AA 4.5:1)를 확인한다. 새 글자/배경 조합은 `scripts/check-contrast.mjs` 의 목록에 추가.
 - **색은 상태 표시에만** 쓴다 (정상 ok · 주의 warn · 위험 danger · 선택 accent). 단순 숫자·역할·분류에 색을 입히지 않는다.
+  - 지금 있는 예외 (늘리면 여기에 적는다): ① 차트의 계열 구분색 — `useChartTheme().series` (차트 색 4개 + 회색 2개, 모두 바탕 대비 확인 대상), ② 로그인·가입 화면의 브랜드 색 `brand-ink`, ③ 역할 태그 중 "시스템 관리자" 하나의 강조.
   - `Tag` 는 `color="success|processing|error|warning"` 또는 색 없음. `green`·`blue`·`red` 같은 antd 기본 색 이름 금지 (디자인 값을 따르지 않고 다크에서 대비가 깨진다).
 - 페이지에 `style={{...}}` 를 새로 쓰지 않는다. `src/styles/app.css` 의 클래스(`toolbar`, `stats`, `fill`, `muted`, `t-danger` …)를 쓰고, 없으면 거기에 추가한다. 페이지 제목은 `PageHeader`, 숫자 카드는 `StatCard`.
+  - 남아 있는 인라인 스타일은 계산된 값뿐이다: 창 끌기·열 너비 조절(`DraggableModal`, `ResizableTable`) 4곳과 차트 범례 글자색 `style={chart.legendText}` 3곳.
 - 다크 모드: `<html data-theme="light|dark">`. 선택(라이트/다크/시스템)은 `theme.store.ts` 가 브라우저에 저장한다. 화면을 고치면 라이트·다크 둘 다 확인.
+  - 저장된 값은 믿지 않는다: `theme.store.ts` 의 `merge` 가 `light|dark|system` 이 아닌 값을 `system` 으로 바꾼다 (TypeScript 타입은 localStorage 내용을 보장하지 않는다 — 검증이 없을 때 깨진 값 하나로 로그인 화면까지 빈 화면이 됐다). 저장하는 설정을 늘릴 때도 같은 식으로 검증할 것.
+  - 테마를 정하는 규칙은 두 군데에 같은 내용으로 있다: `resolveTheme()` (앱) 과 `themeBoot.ts` 의 `bootScript()` (JS 도착 전 index.html). 한쪽을 바꾸면 다른 쪽도 바꾼다.
 - 함정: antd `darkAlgorithm` 은 준 색을 그대로 쓰지 않고 더 어둡게 바꾼다 (태그·삭제 버튼 글자가 4.1~4.45:1 로 떨어졌었다). `antdTheme.ts` 의 `exactColours` 가 원래 값으로 되돌리므로 지우지 말 것.
-- `message.success()` 같은 정적 호출은 `ConfigProvider` 밖에서 그려진다 → `AntConfigProvider` 의 `holderRender` 가 테마·언어를 넘겨준다 (없으면 다크에서 알림만 밝게 나온다).
+- `message.success()` 같은 정적 호출은 `ConfigProvider` 밖(antd 가 따로 만든 React 루트)에서 그려진다 → `AntConfigProvider.tsx` 의 `StaticHolder` 가 테마·언어를 넘겨준다 (없으면 다크에서 알림만 밝게 나온다).
+  - `StaticHolder` 는 테마 store 와 i18n 을 직접 구독한다. `holderRender` 에 그때의 theme 객체를 넘기는 방식으로 되돌리지 말 것 — 이미 떠 있는 알림이 테마 전환을 따라가지 못하고 이전 색으로 남는다.
 - 베트남어가 한국어보다 길다. 표의 상태·역할 열 너비, 버튼·세그먼트 글자는 베트남어로도 잘리지 않는지 확인한다.
 - 휴대폰 화면은 대상이 아니다 (PC 폭 1280px 이상 기준).
 

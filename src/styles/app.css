@@ -1,5 +1,7 @@
 /* Look of the app, after ALMUS WorkBoard: a top bar and a left menu over a cool grey ground, one work surface,
-   dense 36px rows. Every colour and size comes from src/styles/tokens.ts (as CSS variables) — none is written here. */
+   dense 36px rows. Every colour comes from src/styles/tokens.ts (as CSS variables) — none is written here.
+   So do the sizes shared across the app (radius, row, top bar, side menu). Spacing and font sizes that belong
+   to one rule are plain numbers in that rule. */
 
 /* ---------- base ---------- */
 *,*::before,*::after{box-sizing:border-box}
