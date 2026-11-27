@@ -406,6 +406,16 @@
       "viewer": "열람자"
     }
   },
+  "layout": {
+    "toggleSidebar": "메뉴 열기/닫기",
+    "account": "내 계정: {{name}}"
+  },
+  "theme": {
+    "label": "화면 테마",
+    "light": "라이트",
+    "dark": "다크",
+    "system": "시스템"
+  },
   "components": {
     "loginSubtitle": "소모품 관리 시스템",
     "languageSelect": "언어 선택",

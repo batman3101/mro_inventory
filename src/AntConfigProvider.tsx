@@ -1,8 +1,11 @@
+import { useMemo } from 'react';
 import { ConfigProvider } from 'antd';
 import koKR from 'antd/locale/ko_KR';
 import viVN from 'antd/locale/vi_VN';
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
+import { useResolvedTheme } from '@/store/theme.store';
+import { buildAntdTheme } from '@/styles/antdTheme';
 
 interface AntConfigProviderProps {
   children: ReactNode;
@@ -10,6 +13,8 @@ interface AntConfigProviderProps {
 
 const AntConfigProvider = ({ children }: AntConfigProviderProps) => {
   const { i18n } = useTranslation();
+  const themeName = useResolvedTheme();
+  const theme = useMemo(() => buildAntdTheme(themeName), [themeName]);
 
   const getLocale = () => {
     switch (i18n.language) {
@@ -24,24 +29,7 @@ const AntConfigProvider = ({ children }: AntConfigProviderProps) => {
   return (
     <ConfigProvider
       locale={getLocale()}
-      theme={{
-        token: {
-          colorPrimary: '#2563eb',
-          borderRadius: 6,
-          fontSize: 14,
-        },
-        components: {
-          Layout: {
-            siderBg: '#1f2937',
-            triggerBg: '#374151',
-          },
-          Menu: {
-            darkItemBg: '#1f2937',
-            darkItemSelectedBg: '#374151',
-            darkItemHoverBg: '#374151',
-          },
-        },
-      }}
+      theme={theme}
       warning={{
         strict: false,
       }}

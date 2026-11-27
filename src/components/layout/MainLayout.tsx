@@ -1,15 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Layout, message } from 'antd';
+import { message } from 'antd';
 import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import TopBar from './TopBar';
 import { useLocationStore } from '@/store/location.store';
 import { supabase } from '@/lib/supabase';
 import type { Location } from '@/types/database.types';
 
-const { Content, Sider } = Layout;
-
 const MainLayout = () => {
-  const [collapsed, setCollapsed] = useState(false);
+  const [sideOpen, setSideOpen] = useState(true);
   const currentLocationId = useLocationStore((s) => s.currentLocationId);
   const setLocations = useLocationStore((s) => s.setLocations);
   const setCurrentLocation = useLocationStore((s) => s.setCurrentLocation);
@@ -43,46 +42,21 @@ const MainLayout = () => {
     return () => { cancelled = true; };
   }, [setLocations, setCurrentLocation]);
 
-  // antd's default collapsed Sider width is 80px. We pin the Sider to the
-  // viewport so the menu + footer (logout/factory/language) stay visible
-  // regardless of page scroll, and offset the content area by the same width.
-  const SIDER_WIDTH = 240;
-  const SIDER_COLLAPSED_WIDTH = 80;
-  const siderWidth = collapsed ? SIDER_COLLAPSED_WIDTH : SIDER_WIDTH;
-
   return (
-    <Layout style={{ minHeight: '100vh' }}>
-      <Sider
-        collapsible
-        collapsed={collapsed}
-        onCollapse={setCollapsed}
-        theme="dark"
-        width={SIDER_WIDTH}
-        collapsedWidth={SIDER_COLLAPSED_WIDTH}
-        style={{
-          position: 'fixed',
-          left: 0,
-          top: 0,
-          bottom: 0,
-          height: '100vh',
-          overflow: 'hidden',
-          zIndex: 100,
-        }}
-      >
-        <Sidebar collapsed={collapsed} />
-      </Sider>
-      <Layout style={{ marginLeft: siderWidth, transition: 'margin-left 0.2s' }}>
-        <Content
-          style={{
-            padding: 24,
-            minHeight: 'calc(100vh - 48px)',
-            background: '#fff',
-          }}
-        >
-          <Outlet key={currentLocationId ?? 'default'} />
-        </Content>
-      </Layout>
-    </Layout>
+    <div className="app">
+      <TopBar sideOpen={sideOpen} onToggleSide={() => setSideOpen((open) => !open)} />
+      <div className="app-shell">
+        <Sidebar open={sideOpen} />
+        <main className="app-main">
+          <div className="app-surface">
+            {/* The page scrolls inside the work surface; the top bar and the menu stay put. */}
+            <div className="app-page">
+              <Outlet key={currentLocationId ?? 'default'} />
+            </div>
+          </div>
+        </main>
+      </div>
+    </div>
   );
 };
 
