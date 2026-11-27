@@ -4,9 +4,12 @@
 //   --env <file>                                       → env file to read (default .env.local)
 //
 // The existing bcrypt hash is copied into auth.users, so everyone keeps the
-// password they use today. Safe to re-run: rows already linked are skipped and
-// an auth account that already exists for the email is linked instead of
-// created again. Requires migration 20261127000100_auth_foundation.sql.
+// password they use today. Safe to re-run: rows already linked are skipped.
+// An auth account that already exists for the email is linked ONLY if this
+// script created it (app_metadata.migrated_from = users.user_id); any other
+// existing account is reported for manual review, never auto-linked — it could
+// have been registered by someone else to take over the profile.
+// Disable public sign-ups before running. Requires 20261127000100_auth_foundation.sql.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
@@ -37,12 +40,12 @@ const supabase = createClient(env.VITE_SUPABASE_URL, env.SUPABASE_SERVICE_KEY, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-async function findAuthUserIdByEmail(email) {
+async function findAuthUserByEmail(email) {
   for (let page = 1; ; page += 1) {
     const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
     if (error) throw new Error(`auth 사용자 목록 조회 실패: ${error.message}`);
     const hit = data.users.find((u) => (u.email ?? '').toLowerCase() === email.toLowerCase());
-    if (hit) return hit.id;
+    if (hit) return hit;
     if (data.users.length < 1000) return null;
   }
 }
@@ -71,11 +74,17 @@ for (const u of rows) {
       email: u.email,
       password_hash: u.password_hash,
       email_confirm: true,
+      app_metadata: { migrated_from: u.user_id },
     });
     if (createErr) {
-      authId = await findAuthUserIdByEmail(u.email);
-      if (!authId) throw new Error(createErr.message);
-      console.log(`  ~ ${label}: 기존 auth 계정에 연결`);
+      const existing = await findAuthUserByEmail(u.email);
+      if (!existing) throw new Error(createErr.message);
+      if (existing.app_metadata?.migrated_from !== u.user_id) {
+        throw new Error('이 이메일로 이미 다른 auth 계정이 있습니다 (이 스크립트가 만든 계정 아님). '
+          + '자동 연결하지 않음 — Supabase 대시보드에서 그 계정을 확인·삭제한 뒤 다시 실행하세요.');
+      }
+      authId = existing.id;
+      console.log(`  ~ ${label}: 이전 실행에서 만든 auth 계정에 연결`);
     } else {
       authId = created.user.id;
     }
