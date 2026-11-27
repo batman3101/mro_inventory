@@ -59,6 +59,20 @@
   - 앱에서 직접 읽지 않는 내부용 테이블은 `private` 스키마에 둔다 (Data API 비노출).
 - 마이그레이션 파일 이름은 마지막 적용분(`20261127000400`)보다 뒤의 타임스탬프로. 운영 적용은 `supabase db query --remote=<ref> --yes -f` 를 트랜잭션으로 감싸 실행하고 `supabase_migrations.schema_migrations` 에 기록한다 (사용자 승인 후에만).
 
+## 화면 스타일 (2026-11-27 WorkBoard 스타일 적용 이후)
+
+- 색·글꼴·모서리·행 높이 값은 **`src/styles/tokens.ts` 한 곳**에만 적는다 (라이트/다크 두 벌). 다른 파일에 `#hex`·`rgb()` 를 직접 쓰지 않는다.
+  - CSS 는 `var(--accent)` 같은 변수로 (`theme.store.ts` 가 tokens.ts 에서 만들어 넣는다), antd 는 `src/styles/antdTheme.ts`, 차트(recharts)는 `useChartTheme()` (`src/components/chartTheme.ts`) 로 읽는다.
+  - 값을 바꾸거나 더하면 `npm run lint:contrast` 로 글자 대비(WCAG AA 4.5:1)를 확인한다. 새 글자/배경 조합은 `scripts/check-contrast.mjs` 의 목록에 추가.
+- **색은 상태 표시에만** 쓴다 (정상 ok · 주의 warn · 위험 danger · 선택 accent). 단순 숫자·역할·분류에 색을 입히지 않는다.
+  - `Tag` 는 `color="success|processing|error|warning"` 또는 색 없음. `green`·`blue`·`red` 같은 antd 기본 색 이름 금지 (디자인 값을 따르지 않고 다크에서 대비가 깨진다).
+- 페이지에 `style={{...}}` 를 새로 쓰지 않는다. `src/styles/app.css` 의 클래스(`toolbar`, `stats`, `fill`, `muted`, `t-danger` …)를 쓰고, 없으면 거기에 추가한다. 페이지 제목은 `PageHeader`, 숫자 카드는 `StatCard`.
+- 다크 모드: `<html data-theme="light|dark">`. 선택(라이트/다크/시스템)은 `theme.store.ts` 가 브라우저에 저장한다. 화면을 고치면 라이트·다크 둘 다 확인.
+- 함정: antd `darkAlgorithm` 은 준 색을 그대로 쓰지 않고 더 어둡게 바꾼다 (태그·삭제 버튼 글자가 4.1~4.45:1 로 떨어졌었다). `antdTheme.ts` 의 `exactColours` 가 원래 값으로 되돌리므로 지우지 말 것.
+- `message.success()` 같은 정적 호출은 `ConfigProvider` 밖에서 그려진다 → `AntConfigProvider` 의 `holderRender` 가 테마·언어를 넘겨준다 (없으면 다크에서 알림만 밝게 나온다).
+- 베트남어가 한국어보다 길다. 표의 상태·역할 열 너비, 버튼·세그먼트 글자는 베트남어로도 잘리지 않는지 확인한다.
+- 휴대폰 화면은 대상이 아니다 (PC 폭 1280px 이상 기준).
+
 ## Coding Patterns
 
 - Zustand 스토어: named export (`useXxxStore`), immutable 패턴 (spread/map/filter)

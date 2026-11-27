@@ -1,0 +1,65 @@
+PASS light /signup: 12 text nodes pass, 0 fail, 0 could not be measured
+PASS light /login: 9 text nodes pass, 0 fail, 0 could not be measured
+PASS light ko /: 59 text nodes pass, 0 fail, 14 could not be measured
+PASS light ko /items: 153 text nodes pass, 0 fail, 34 could not be measured
+PASS light ko /categories: 67 text nodes pass, 0 fail, 0 could not be measured
+PASS light ko /inventory: 188 text nodes pass, 0 fail, 0 could not be measured
+PASS light ko /inbound: 140 text nodes pass, 0 fail, 16 could not be measured
+PASS light ko /outbound: 168 text nodes pass, 0 fail, 15 could not be measured
+PASS light ko /suppliers: 71 text nodes pass, 0 fail, 1 could not be measured
+PASS light ko /departments: 40 text nodes pass, 0 fail, 0 could not be measured
+PASS light ko /analytics: 27 text nodes pass, 0 fail, 38 could not be measured
+PASS light ko /users: 80 text nodes pass, 0 fail, 0 could not be measured
+PASS light vi /: 59 text nodes pass, 0 fail, 14 could not be measured
+PASS light vi /items: 153 text nodes pass, 0 fail, 34 could not be measured
+PASS light vi /categories: 67 text nodes pass, 0 fail, 0 could not be measured
+PASS light vi /inventory: 188 text nodes pass, 0 fail, 0 could not be measured
+PASS light vi /inbound: 140 text nodes pass, 0 fail, 16 could not be measured
+PASS light vi /outbound: 159 text nodes pass, 0 fail, 15 could not be measured
+PASS light vi /suppliers: 71 text nodes pass, 0 fail, 1 could not be measured
+PASS light vi /departments: 40 text nodes pass, 0 fail, 0 could not be measured
+PASS light vi /analytics: 27 text nodes pass, 0 fail, 38 could not be measured
+PASS light vi /users: 79 text nodes pass, 0 fail, 1 could not be measured
+PASS light vi price window: 189 text nodes pass, 0 fail, 45 could not be measured
+PASS light vi new item window: 183 text nodes pass, 0 fail, 36 could not be measured
+PASS light vi account pop-up: 157 text nodes pass, 0 fail, 34 could not be measured
+PASS dark /signup: 12 text nodes pass, 0 fail, 0 could not be measured
+PASS dark /login: 9 text nodes pass, 0 fail, 0 could not be measured
+PASS dark ko /: 59 text nodes pass, 0 fail, 14 could not be measured
+PASS dark ko /items: 153 text nodes pass, 0 fail, 34 could not be measured
+PASS dark ko /categories: 67 text nodes pass, 0 fail, 0 could not be measured
+PASS dark ko /inventory: 188 text nodes pass, 0 fail, 0 could not be measured
+PASS dark ko /inbound: 140 text nodes pass, 0 fail, 16 could not be measured
+PASS dark ko /outbound: 168 text nodes pass, 0 fail, 15 could not be measured
+PASS dark ko /suppliers: 71 text nodes pass, 0 fail, 1 could not be measured
+PASS dark ko /departments: 40 text nodes pass, 0 fail, 0 could not be measured
+PASS dark ko /analytics: 27 text nodes pass, 0 fail, 38 could not be measured
+PASS dark ko /users: 80 text nodes pass, 0 fail, 0 could not be measured
+PASS dark vi /: 59 text nodes pass, 0 fail, 14 could not be measured
+PASS dark vi /items: 153 text nodes pass, 0 fail, 34 could not be measured
+PASS dark vi /categories: 67 text nodes pass, 0 fail, 0 could not be measured
+PASS dark vi /inventory: 188 text nodes pass, 0 fail, 0 could not be measured
+PASS dark vi /inbound: 140 text nodes pass, 0 fail, 16 could not be measured
+PASS dark vi /outbound: 159 text nodes pass, 0 fail, 15 could not be measured
+PASS dark vi /suppliers: 71 text nodes pass, 0 fail, 1 could not be measured
+PASS dark vi /departments: 40 text nodes pass, 0 fail, 0 could not be measured
+PASS dark vi /analytics: 27 text nodes pass, 0 fail, 38 could not be measured
+PASS dark vi /users: 79 text nodes pass, 0 fail, 1 could not be measured
+PASS dark vi price window: 189 text nodes pass, 0 fail, 45 could not be measured
+PASS dark vi new item window: 183 text nodes pass, 0 fail, 36 could not be measured
+PASS dark vi account pop-up: 157 text nodes pass, 0 fail, 34 could not be measured
+theme: PC setting light -> data-theme=light body=rgb(233, 237, 242)
+theme: PC setting changed to dark while open -> data-theme=dark body=rgb(14, 17, 21)
+theme: chose "light" on a dark PC -> data-theme=light stored={"state":{"mode":"light"},"version":0}
+theme: after reload -> data-theme=light body=rgb(233, 237, 242)
+theme: chose "dark" -> data-theme=dark antd card bg=rgb(23, 27, 33)
+theme: chose "system" (PC is dark) -> data-theme=dark
+theme: "system", PC back to light -> data-theme=light
+menu: open left=0 visible=visible
+menu: after toggle left=-256 visible=hidden
+menu: toggled back left=0 visible=visible
+language: VI -> title "Bảng điều khiển", menu "Bảng điều khiển | Tồn kho | Vật tư | Danh mục | Nhập kho | Xuất kho | Nhà cung cấp | Người dùng | Phân tích"
+factory: ALV chosen -> stored=ALV, total stock card "0cái"
+logout: landed on /login
+
+contrast violations: 0
