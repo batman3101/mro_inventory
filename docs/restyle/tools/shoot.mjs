@@ -1,9 +1,13 @@
 // Screenshots of every page against the local dev server (throwaway local Supabase, fictional data).
 // usage: SHOT_EMAIL=… SHOT_PASSWORD=… node shoot.mjs <before|after> <outDir> [light,dark] [ko,vi]
-// needs playwright-core and a Chromium (see ../README.md); MODALS=0 skips the windows
+// needs playwright-core and a Chromium (see ../README.md); MODALS=0 skips the windows, PAGES=0 the pages.
+// Every picture is checked before it is taken: the address, the page's title, a window's title (from the
+// app's own ko/vi texts). If the screen is not the one the file is named after, the run stops with an error
+// (2026-11-27 audit RESTYLE-02: four "before" window pictures were in fact the sign-in page).
 import { chromium } from 'playwright-core';
-import { mkdirSync } from 'node:fs';
-import { join } from 'node:path';
+import { mkdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const [, , phase = 'after', outDir = './out', schemesArg = 'light,dark', langsArg = 'ko'] = process.argv;
 const BASE = process.env.BASE_URL ?? 'http://localhost:5188';
@@ -14,19 +18,24 @@ if (!EMAIL || !PASSWORD) throw new Error('set SHOT_EMAIL and SHOT_PASSWORD (the 
 const EXE = `${process.env.LOCALAPPDATA}/ms-playwright/chromium-1228/chrome-win64/chrome.exe`;
 const W = 1440;
 const H = 900;
+// the app's texts; set LOCALES_DIR when this script runs from a copy outside the repository
+const LOCALES = process.env.LOCALES_DIR ?? join(dirname(fileURLToPath(import.meta.url)), '../../../src/i18n/locales');
+const texts = (lang) => JSON.parse(readFileSync(join(LOCALES, `${lang}.json`), 'utf8'));
 
+// [file name, address, the page title's key in the locale files]
 const PAGES = [
-  ['dashboard', '/'],
-  ['items', '/items'],
-  ['categories', '/categories'],
-  ['inventory', '/inventory'],
-  ['inbound', '/inbound'],
-  ['outbound', '/outbound'],
-  ['suppliers', '/suppliers'],
-  ['departments', '/departments'],
-  ['analytics', '/analytics'],
-  ['users', '/users'],
+  ['dashboard', '/', 'dashboard.title'],
+  ['items', '/items', 'items.title'],
+  ['categories', '/categories', 'categories.title'],
+  ['inventory', '/inventory', 'inventory.listTitle'],
+  ['inbound', '/inbound', 'inbound.title'],
+  ['outbound', '/outbound', 'outbound.title'],
+  ['suppliers', '/suppliers', 'suppliers.title'],
+  ['departments', '/departments', 'departments.title'],
+  ['analytics', '/analytics', 'analytics.title'],
+  ['users', '/users', 'users.title'],
 ];
+const pick = (obj, key) => key.split('.').reduce((o, k) => o[k], obj);
 
 mkdirSync(outDir, { recursive: true });
 const problems = [];
@@ -61,6 +70,38 @@ async function spaGo(page, path) {
     window.dispatchEvent(new PopStateEvent('popstate'));
   }, path);
   await settle(page);
+}
+
+// ---- checks that the screen is the intended one; each throws, which ends the run ----
+async function expectAt(page, path) {
+  const at = new URL(page.url()).pathname;
+  if (at !== path) throw new Error(`expected the address ${path} but the browser is at ${at}`);
+  if (path !== '/login' && (await page.locator('input[autocomplete="current-password"]').count()) > 0) {
+    throw new Error(`expected ${path} but the sign-in form is showing (signed out?)`);
+  }
+}
+
+// the page's own title (h1 after the restyle, antd's h3 title before it)
+async function expectPage(page, path, title) {
+  await expectAt(page, path);
+  await page.locator('h1, h3.ant-typography').filter({ hasText: title }).first()
+    .waitFor({ state: 'visible', timeout: 8000 })
+    .catch(() => { throw new Error(`at ${path} the page title "${title}" is not on screen`); });
+}
+
+// click, then make sure the window with this title is open on the same page
+async function openWindow(page, opener, title, path) {
+  await opener.click();
+  await page.locator('.ant-modal-title:visible').filter({ hasText: title }).first()
+    .waitFor({ state: 'visible', timeout: 8000 })
+    .catch(() => { throw new Error(`the window "${title}" did not open (address now ${new URL(page.url()).pathname})`); });
+  await expectAt(page, path);
+  await settle(page);
+}
+
+async function closeWindow(page) {
+  await page.keyboard.press('Escape');
+  await page.locator('.ant-modal-title:visible').first().waitFor({ state: 'hidden', timeout: 8000 });
 }
 
 async function setLang(page, lang) {
@@ -113,15 +154,19 @@ for (const scheme of schemesArg.split(',')) {
     });
     page.on('pageerror', (e) => problems.push(`[pageerror] ${scheme}/${lang} ${page.url()}: ${String(e).slice(0, 300)}`));
     const tag = `${phase}-${scheme}-${lang}`;
+    const t = texts(lang);
+    const pages = process.env.PAGES !== '0';
 
-    if (lang === 'ko') {
+    if (lang === 'ko' && pages) {
       await page.goto(`${BASE}/signup`);
       await settle(page);
+      await expectAt(page, '/signup');
       await shot(page, `${tag}-signup.png`);
     }
     await page.goto(`${BASE}/login`);
     await settle(page);
-    if (lang === 'ko') await shot(page, `${tag}-login.png`);
+    await expectAt(page, '/login');
+    if (lang === 'ko' && pages) await shot(page, `${tag}-login.png`);
 
     await page.fill('input[autocomplete="email"]', EMAIL);
     await page.fill('input[autocomplete="current-password"]', PASSWORD);
@@ -130,57 +175,69 @@ for (const scheme of schemesArg.split(',')) {
     await settle(page);
     await setLang(page, lang);
 
-    for (const [name, path] of PAGES) {
+    for (const [name, path, titleKey] of PAGES) {
       await spaGo(page, path);
+      await expectPage(page, path, pick(t, titleKey));
+      if (!pages) continue;
       await shot(page, `${tag}-${name}.png`);
       await clipReport(page, `${tag}-${name}`);
     }
 
     // a few windows opened for looking only (nothing is saved)
     if (process.env.MODALS !== '0') {
+      // Buttons are looked for inside the page area, by their own name: before the restyle the side menu held a
+      // primary "log out" button ahead of the page's, so "the first primary button" signed the session out.
+      const content = page.locator('.ant-layout-content, .app-page');
+      const firstRow = content.locator('.ant-table-tbody tr.ant-table-row').first();
+      const iconButton = (icon) => firstRow.locator('button').filter({ has: page.locator(`.anticon-${icon}`) });
+
       await spaGo(page, '/items');
-      await page.locator('.ant-table-tbody tr.ant-table-row').first().locator('button').nth(2).click(); // price management
-      await settle(page);
+      await expectPage(page, '/items', t.items.title);
+      await openWindow(page, iconButton('dollar'), t.items.managePrice, '/items');
       await shot(page, `${tag}-modal-price.png`);
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(400);
-      await page.locator('button.ant-btn-primary').first().click(); // new item
-      await settle(page);
+      await closeWindow(page);
+
+      await openWindow(page, content.getByRole('button', { name: t.items.addItem }), t.items.createItem, '/items');
       await shot(page, `${tag}-modal-item.png`);
       await clipReport(page, `${tag}-modal-item`);
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(400);
+      await closeWindow(page);
+
       await spaGo(page, '/outbound');
-      await page.locator('button.ant-btn-primary').first().click();
-      await settle(page);
+      await expectPage(page, '/outbound', t.outbound.title);
+      await openWindow(page, content.getByRole('button', { name: t.outbound.newOutbound }), t.outbound.newOutbound, '/outbound');
       await shot(page, `${tag}-modal-outbound.png`);
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(400);
+      await clipReport(page, `${tag}-modal-outbound`);
+      await closeWindow(page);
+
       if (phase === 'after') {
         await spaGo(page, '/items');
-        await page.locator('.ant-table-tbody tr.ant-table-row').first().locator('button').nth(0).click(); // details
-        await settle(page);
+        await expectPage(page, '/items', t.items.title);
+        await openWindow(page, iconButton('eye'), t.items.detail, '/items');
         await shot(page, `${tag}-modal-detail.png`);
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(400);
-        await page.locator('.page-h .acts button').nth(1).click(); // bulk upload window (nothing is uploaded)
-        await settle(page);
+        await closeWindow(page);
+
+        // bulk upload window (nothing is uploaded)
+        await openWindow(page, content.getByRole('button', { name: t.items.bulkUpload }), t.items.bulkDialogTitle, '/items');
         await shot(page, `${tag}-modal-bulk.png`);
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(400);
+        await closeWindow(page);
+
         await spaGo(page, '/');
+        await expectPage(page, '/', t.dashboard.title);
         await page.locator('.app-top .tbtn').last().click(); // account pop-up
-        await page.waitForTimeout(600);
+        await page.locator('.user-pop').getByRole('button', { name: t.auth.logout }).waitFor({ state: 'visible', timeout: 8000 });
+        await page.waitForTimeout(400);
         await page.screenshot({ path: join(outDir, `${tag}-account-popup.png`) });
         await clipReport(page, `${tag}-account-popup`);
         await page.keyboard.press('Escape');
-        await page.waitForTimeout(300);
+        await page.locator('.user-pop').waitFor({ state: 'hidden', timeout: 8000 });
         await page.locator('.app-top .tbtn').first().click(); // menu closed
-        await page.waitForTimeout(600);
+        await page.locator('.app-side.closed').waitFor({ state: 'attached', timeout: 8000 });
+        await page.waitForTimeout(500);
         await page.screenshot({ path: join(outDir, `${tag}-menu-closed.png`) });
         await page.locator('.app-top .tbtn').first().click();
       }
     }
+    await expectAt(page, new URL(page.url()).pathname); // still signed in at the end of the run
     await ctx.close();
   }
 }
