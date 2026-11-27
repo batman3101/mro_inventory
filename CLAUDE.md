@@ -53,6 +53,11 @@
 - 공장 종속 쿼리에는 항상 `location_id` 조건. 공장이 아직 선택되지 않았으면 전역 조회로 대체하지 말고 기다린다.
 - Supabase 응답은 실패해도 throw 하지 않는다 — `error` 를 반드시 확인 (`?? 0` 으로 덮지 말 것).
 - 새 마이그레이션의 함수는 `REVOKE EXECUTE ... FROM PUBLIC, anon` 후 필요한 역할에만 GRANT.
+- 새 테이블은 같은 마이그레이션에서 반드시 `ENABLE ROW LEVEL SECURITY` + `app_*` 정책을 만든다. 빠뜨리면 로그인한 사용자 누구나 전체 행에 접근한다 (authenticated 는 기본 테이블 권한을 가짐).
+  - 공장 데이터(`location_id` 있음): 기존 공장 범위 정책과 같은 식 — `20261127000100_auth_foundation.sql` 의 `loc_ok` 참고. 조회는 `is_active_user` + 공장 일치, 쓰기는 `can_write` 추가.
+  - 전역 마스터(공장 없음): 조회 `is_active_user`, 쓰기 `can_write`.
+  - 앱에서 직접 읽지 않는 내부용 테이블은 `private` 스키마에 둔다 (Data API 비노출).
+- 마이그레이션 파일 이름은 마지막 적용분(`20261127000400`)보다 뒤의 타임스탬프로. 운영 적용은 `supabase db query --remote=<ref> --yes -f` 를 트랜잭션으로 감싸 실행하고 `supabase_migrations.schema_migrations` 에 기록한다 (사용자 승인 후에만).
 
 ## Coding Patterns
 
