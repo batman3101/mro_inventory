@@ -61,6 +61,7 @@ DECLARE
   prev_item_id UUID;
   prev_location_id UUID;
   prev_quantity INT;
+  v_actor VARCHAR(50) := private.app_username();  -- p_updated_by is ignored
 BEGIN
   IF p_quantity IS NULL OR p_quantity <= 0 THEN
     RAISE EXCEPTION 'invalid_quantity: %', p_quantity USING ERRCODE = '22023';
@@ -94,14 +95,14 @@ BEGIN
 
   IF prev_item_id = p_item_id THEN
     PERFORM apply_inventory_delta(
-      p_item_id, prev_location_id, p_quantity - prev_quantity, p_updated_by
+      p_item_id, prev_location_id, p_quantity - prev_quantity, v_actor
     );
   ELSE
     PERFORM apply_inventory_delta(
-      prev_item_id, prev_location_id, -prev_quantity, p_updated_by
+      prev_item_id, prev_location_id, -prev_quantity, v_actor
     );
     PERFORM apply_inventory_delta(
-      p_item_id, prev_location_id, p_quantity, p_updated_by
+      p_item_id, prev_location_id, p_quantity, v_actor
     );
   END IF;
 
@@ -121,6 +122,7 @@ DECLARE
   prev_item_id UUID;
   prev_location_id UUID;
   prev_quantity INT;
+  v_actor VARCHAR(50) := private.app_username();  -- p_updated_by is ignored
 BEGIN
   SELECT item_id, location_id, quantity
   INTO prev_item_id, prev_location_id, prev_quantity
@@ -134,7 +136,7 @@ BEGIN
   PERFORM private.assert_can_write_location(prev_location_id);
 
   PERFORM apply_inventory_delta(
-    prev_item_id, prev_location_id, -prev_quantity, p_updated_by
+    prev_item_id, prev_location_id, -prev_quantity, v_actor
   );
 
   DELETE FROM inbound WHERE inbound_id = p_inbound_id;
@@ -162,6 +164,7 @@ DECLARE
   prev_item_id UUID;
   prev_location_id UUID;
   prev_quantity INT;
+  v_actor VARCHAR(50) := private.app_username();  -- p_updated_by is ignored
 BEGIN
   IF p_quantity IS NULL OR p_quantity <= 0 THEN
     RAISE EXCEPTION 'invalid_quantity: %', p_quantity USING ERRCODE = '22023';
@@ -192,14 +195,14 @@ BEGIN
 
   IF prev_item_id = p_item_id THEN
     PERFORM apply_inventory_delta(
-      p_item_id, prev_location_id, prev_quantity - p_quantity, p_updated_by
+      p_item_id, prev_location_id, prev_quantity - p_quantity, v_actor
     );
   ELSE
     PERFORM apply_inventory_delta(
-      prev_item_id, prev_location_id, prev_quantity, p_updated_by
+      prev_item_id, prev_location_id, prev_quantity, v_actor
     );
     PERFORM apply_inventory_delta(
-      p_item_id, prev_location_id, -p_quantity, p_updated_by
+      p_item_id, prev_location_id, -p_quantity, v_actor
     );
   END IF;
 
@@ -219,6 +222,7 @@ DECLARE
   prev_item_id UUID;
   prev_location_id UUID;
   prev_quantity INT;
+  v_actor VARCHAR(50) := private.app_username();  -- p_updated_by is ignored
 BEGIN
   SELECT item_id, location_id, quantity
   INTO prev_item_id, prev_location_id, prev_quantity
@@ -232,7 +236,7 @@ BEGIN
   PERFORM private.assert_can_write_location(prev_location_id);
 
   PERFORM apply_inventory_delta(
-    prev_item_id, prev_location_id, prev_quantity, p_updated_by
+    prev_item_id, prev_location_id, prev_quantity, v_actor
   );
 
   DELETE FROM outbound WHERE outbound_id = p_outbound_id;

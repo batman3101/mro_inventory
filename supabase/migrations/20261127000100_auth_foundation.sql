@@ -51,6 +51,16 @@ AS $$
   WHERE u.auth_user_id = (SELECT auth.uid()) AND u.is_active;
 $$;
 
+-- Username of the calling app user, used for created_by / updated_by so the
+-- audit trail cannot be spoofed by a client-supplied name.
+CREATE OR REPLACE FUNCTION private.app_username()
+RETURNS VARCHAR(50)
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+  SELECT u.username FROM public.users u
+  WHERE u.auth_user_id = (SELECT auth.uid()) AND u.is_active;
+$$;
+
 CREATE OR REPLACE FUNCTION private.is_active_user()
 RETURNS BOOLEAN
 LANGUAGE sql STABLE SECURITY DEFINER SET search_path = ''
@@ -291,6 +301,7 @@ SET search_path = public
 AS $$
 DECLARE
   v_id UUID;
+  v_actor VARCHAR(50) := private.app_username();  -- p_created_by is ignored
 BEGIN
   PERFORM private.assert_can_write_location(p_location_id);
   IF p_quantity IS NULL OR p_quantity <= 0 THEN
@@ -306,11 +317,11 @@ BEGIN
   ) VALUES (
     p_inbound_date, p_item_id, p_supplier_id, p_location_id, p_quantity,
     p_unit_price, p_quantity * p_unit_price, p_currency,
-    private.next_reference_number('IN'), p_notes, p_created_by
+    private.next_reference_number('IN'), p_notes, v_actor
   )
   RETURNING inbound_id INTO v_id;
 
-  PERFORM apply_inventory_delta(p_item_id, p_location_id, p_quantity, p_created_by);
+  PERFORM apply_inventory_delta(p_item_id, p_location_id, p_quantity, v_actor);
   RETURN v_id;
 END;
 $$;
@@ -334,6 +345,7 @@ AS $$
 DECLARE
   v_id UUID;
   v_current INT;
+  v_actor VARCHAR(50) := private.app_username();  -- p_created_by is ignored
 BEGIN
   PERFORM private.assert_can_write_location(p_location_id);
   IF p_quantity IS NULL OR p_quantity <= 0 THEN
@@ -355,11 +367,11 @@ BEGIN
     purpose, cost_center, reference_number, notes, created_by
   ) VALUES (
     p_outbound_date, p_item_id, p_location_id, p_quantity, p_requester, p_department_id,
-    p_purpose, p_cost_center, private.next_reference_number('OUT'), p_notes, p_created_by
+    p_purpose, p_cost_center, private.next_reference_number('OUT'), p_notes, v_actor
   )
   RETURNING outbound_id INTO v_id;
 
-  PERFORM apply_inventory_delta(p_item_id, p_location_id, -p_quantity, p_created_by);
+  PERFORM apply_inventory_delta(p_item_id, p_location_id, -p_quantity, v_actor);
   RETURN v_id;
 END;
 $$;
@@ -391,6 +403,7 @@ DECLARE
   v_id UUID;
   v_item_id UUID;
   v_location_id UUID;
+  v_actor VARCHAR(50) := private.app_username();  -- p_created_by is ignored
 BEGIN
   PERFORM private.assert_can_write_location(p_location_id);
   IF p_unit_price IS NULL OR p_unit_price < 0 THEN
@@ -433,7 +446,7 @@ BEGIN
       effective_from, effective_to, is_current, created_by
     ) VALUES (
       p_item_id, p_location_id, p_unit_price, p_currency, p_supplier_id,
-      p_effective_from, p_effective_to, p_is_current, p_created_by
+      p_effective_from, p_effective_to, p_is_current, v_actor
     )
     RETURNING price_id INTO v_id;
   ELSE
