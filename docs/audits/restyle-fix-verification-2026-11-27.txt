@@ -1,0 +1,145 @@
+# 감사 지적 수정 검증 원문 — 2026-11-27
+# 도구: docs/restyle/tools/verify-theme.mjs (로컬 임시 Supabase, 지어낸 데이터). PC 설정은 Playwright 의 colorScheme 로 흉내 냄.
+
+################ 1. 수정 전: 감사 대상 커밋 94d837e (개발 서버) — exit 1
+
+== RESTYLE-01: stored theme value -> does the sign-in page still render? (PC setting: dark)
+PASS valid "system"                       data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS valid "light"                        data-theme=light email inputs=1 text chars=53 body=rgb(233, 237, 242) pageerrors=0
+PASS valid "dark"                         data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+FAIL wrong string "invalid"               data-theme=invalid email inputs=0 text chars=0 body=rgb(233, 237, 242) pageerrors=3 (TypeError: Cannot read properties of undefined (reading 'accentWeak'))
+FAIL mode null                            data-theme=null email inputs=0 text chars=0 body=rgb(233, 237, 242) pageerrors=3 (TypeError: Cannot read properties of undefined (reading 'accentWeak'))
+FAIL mode number 1                        data-theme=1 email inputs=0 text chars=0 body=rgb(233, 237, 242) pageerrors=3 (TypeError: Cannot read properties of undefined (reading 'accentWeak'))
+FAIL mode object                          data-theme=[object Object] email inputs=0 text chars=0 body=rgb(233, 237, 242) pageerrors=3 (TypeError: Cannot read properties of undefined (reading 'accentWeak'))
+FAIL mode "__proto__"                     data-theme=__proto__ email inputs=1 text chars=53 body=rgb(233, 237, 242) pageerrors=0
+PASS state null                           data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS state missing                        data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS state is a string                    data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS broken JSON                          data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS JSON null                            data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS JSON array                           data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS plain text                           data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS empty string                         data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS version mismatch (99) with "light"   data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+
+== RESTYLE-04: what is painted while the app's JavaScript has not arrived yet (dev)
+FAIL saved light, PC dark       BEFORE app script: data-theme=null html bg=rgba(0, 0, 0, 0) color-scheme=normal (app mounted: false) | AFTER: sign-in shown=true data-theme=light body=rgb(233, 237, 242) pageerrors=0 [04-dev-saved-light-PC-dark.png]
+FAIL saved dark, PC light       BEFORE app script: data-theme=null html bg=rgba(0, 0, 0, 0) color-scheme=normal (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-dev-saved-dark-PC-light.png]
+FAIL saved system, PC dark      BEFORE app script: data-theme=null html bg=rgba(0, 0, 0, 0) color-scheme=normal (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-dev-saved-system-PC-dark.png]
+FAIL saved system, PC light     BEFORE app script: data-theme=null html bg=rgba(0, 0, 0, 0) color-scheme=normal (app mounted: false) | AFTER: sign-in shown=true data-theme=light body=rgb(233, 237, 242) pageerrors=0 [04-dev-saved-system-PC-light.png]
+FAIL nothing saved, PC dark     BEFORE app script: data-theme=null html bg=rgba(0, 0, 0, 0) color-scheme=normal (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-dev-nothing-saved-PC-dark.png]
+FAIL saved "invalid", PC light  BEFORE app script: data-theme=null html bg=rgba(0, 0, 0, 0) color-scheme=normal (app mounted: false) | AFTER: sign-in shown=false data-theme=invalid body=rgb(233, 237, 242) pageerrors=3 [04-dev-saved-invalid-PC-light.png]
+FAIL broken JSON, PC dark       BEFORE app script: data-theme=null html bg=rgba(0, 0, 0, 0) color-scheme=normal (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-dev-broken-JSON-PC-dark.png]
+
+== RESTYLE-03: a toast that is already open, while the theme is switched (dev)
+   opened through the app's antd module: antd.js?v=bca82373
+PASS light (start)          page theme=light toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+FAIL -> dark                page theme=dark toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+PASS -> light               page theme=light toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+FAIL -> dark again          page theme=dark toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+PASS -> system (PC light)   page theme=light toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+PASS after KO -> VI             toast still open: true, text=rgb(28, 34, 48)
+PASS page errors during the run: 0
+
+failed checks: 14
+
+################ 2. 수정 후: 코드 커밋 86715d3 (개발 서버) — exit 0
+
+== RESTYLE-01: stored theme value -> does the sign-in page still render? (PC setting: dark)
+PASS valid "system"                       data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS valid "light"                        data-theme=light email inputs=1 text chars=53 body=rgb(233, 237, 242) pageerrors=0
+PASS valid "dark"                         data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS wrong string "invalid"               data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS mode null                            data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS mode number 1                        data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS mode object                          data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS mode "__proto__"                     data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS state null                           data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS state missing                        data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS state is a string                    data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS broken JSON                          data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS JSON null                            data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS JSON array                           data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS plain text                           data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS empty string                         data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS version mismatch (99) with "light"   data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+
+== RESTYLE-04: what is painted while the app's JavaScript has not arrived yet (dev)
+PASS saved light, PC dark       BEFORE app script: data-theme=light html bg=rgb(233, 237, 242) color-scheme=light (app mounted: false) | AFTER: sign-in shown=true data-theme=light body=rgb(233, 237, 242) pageerrors=0 [04-dev-saved-light-PC-dark.png]
+PASS saved dark, PC light       BEFORE app script: data-theme=dark html bg=rgb(14, 17, 21) color-scheme=dark (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-dev-saved-dark-PC-light.png]
+PASS saved system, PC dark      BEFORE app script: data-theme=dark html bg=rgb(14, 17, 21) color-scheme=dark (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-dev-saved-system-PC-dark.png]
+PASS saved system, PC light     BEFORE app script: data-theme=light html bg=rgb(233, 237, 242) color-scheme=light (app mounted: false) | AFTER: sign-in shown=true data-theme=light body=rgb(233, 237, 242) pageerrors=0 [04-dev-saved-system-PC-light.png]
+PASS nothing saved, PC dark     BEFORE app script: data-theme=dark html bg=rgb(14, 17, 21) color-scheme=dark (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-dev-nothing-saved-PC-dark.png]
+PASS saved "invalid", PC light  BEFORE app script: data-theme=light html bg=rgb(233, 237, 242) color-scheme=light (app mounted: false) | AFTER: sign-in shown=true data-theme=light body=rgb(233, 237, 242) pageerrors=0 [04-dev-saved-invalid-PC-light.png]
+PASS broken JSON, PC dark       BEFORE app script: data-theme=dark html bg=rgb(14, 17, 21) color-scheme=dark (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-dev-broken-JSON-PC-dark.png]
+
+== RESTYLE-03: a toast that is already open, while the theme is switched (dev)
+   opened through the app's antd module: antd.js?v=d69bd50e
+PASS light (start)          page theme=light toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+PASS -> dark                page theme=dark toast text=rgb(227, 231, 237) toast ground=rgb(23, 27, 33) (open toasts: 1)
+PASS -> light               page theme=light toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+PASS -> dark again          page theme=dark toast text=rgb(227, 231, 237) toast ground=rgb(23, 27, 33) (open toasts: 1)
+PASS -> system (PC light)   page theme=light toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+PASS after KO -> VI             toast still open: true, text=rgb(28, 34, 48)
+PASS page errors during the run: 0
+
+failed checks: 0
+
+################ 3. 수정 후: 코드 커밋 86715d3 (배포용 빌드: vite build + vite preview) — exit 0
+
+== RESTYLE-01: stored theme value -> does the sign-in page still render? (PC setting: dark)
+PASS valid "system"                       data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS valid "light"                        data-theme=light email inputs=1 text chars=53 body=rgb(233, 237, 242) pageerrors=0
+PASS valid "dark"                         data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS wrong string "invalid"               data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS mode null                            data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS mode number 1                        data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS mode object                          data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS mode "__proto__"                     data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS state null                           data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS state missing                        data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS state is a string                    data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS broken JSON                          data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS JSON null                            data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS JSON array                           data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS plain text                           data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS empty string                         data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+PASS version mismatch (99) with "light"   data-theme=dark email inputs=1 text chars=53 body=rgb(14, 17, 21) pageerrors=0
+
+== RESTYLE-04: what is painted while the app's JavaScript has not arrived yet (prod)
+PASS saved light, PC dark       BEFORE app script: data-theme=light html bg=rgb(233, 237, 242) color-scheme=light (app mounted: false) | AFTER: sign-in shown=true data-theme=light body=rgb(233, 237, 242) pageerrors=0 [04-prod-saved-light-PC-dark.png]
+PASS saved dark, PC light       BEFORE app script: data-theme=dark html bg=rgb(14, 17, 21) color-scheme=dark (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-prod-saved-dark-PC-light.png]
+PASS saved system, PC dark      BEFORE app script: data-theme=dark html bg=rgb(14, 17, 21) color-scheme=dark (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-prod-saved-system-PC-dark.png]
+PASS saved system, PC light     BEFORE app script: data-theme=light html bg=rgb(233, 237, 242) color-scheme=light (app mounted: false) | AFTER: sign-in shown=true data-theme=light body=rgb(233, 237, 242) pageerrors=0 [04-prod-saved-system-PC-light.png]
+PASS nothing saved, PC dark     BEFORE app script: data-theme=dark html bg=rgb(14, 17, 21) color-scheme=dark (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-prod-nothing-saved-PC-dark.png]
+PASS saved "invalid", PC light  BEFORE app script: data-theme=light html bg=rgb(233, 237, 242) color-scheme=light (app mounted: false) | AFTER: sign-in shown=true data-theme=light body=rgb(233, 237, 242) pageerrors=0 [04-prod-saved-invalid-PC-light.png]
+PASS broken JSON, PC dark       BEFORE app script: data-theme=dark html bg=rgb(14, 17, 21) color-scheme=dark (app mounted: false) | AFTER: sign-in shown=true data-theme=dark body=rgb(14, 17, 21) pageerrors=0 [04-prod-broken-JSON-PC-dark.png]
+
+== RESTYLE-03: a toast that is already open, while the theme is switched (prod)
+   opened through the app's antd module: index-BSV2KPRg.js
+PASS light (start)          page theme=light toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+PASS -> dark                page theme=dark toast text=rgb(227, 231, 237) toast ground=rgb(23, 27, 33) (open toasts: 1)
+PASS -> light               page theme=light toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+PASS -> dark again          page theme=dark toast text=rgb(227, 231, 237) toast ground=rgb(23, 27, 33) (open toasts: 1)
+PASS -> system (PC light)   page theme=light toast text=rgb(28, 34, 48) toast ground=rgb(255, 255, 255) (open toasts: 1)
+PASS after KO -> VI             toast still open: true, text=rgb(28, 34, 48)
+PASS page errors during the run: 0
+
+failed checks: 0
+
+################ 4. RESTYLE-02 원인 확인: 기준 커밋 b906fb4 의 /items 에서 'button.ant-btn-primary' 순서
+primary buttons on /items, in document order: ["로그아웃","ALT","🇰🇷","소모품 추가"]
+after clicking the first one -> address /login | sign-in form showing: true
+
+################ 5. 고친 촬영 도구(shoot.mjs)
+기준 커밋 b906fb4, before light,dark ko (화면+창): exit 0 / before light vi (화면): exit 0 — 40장 모두 주소·제목 확인 통과
+수정 후 86715d3, after light,dark ko (화면+창) / light,dark vi (화면): exit 0 — 58장 모두 통과, 'no console errors, no clipped text found'
+반대 시험 (기대하는 모달 제목을 일부러 틀리게): exit 1
+  Error: the window "이런 제목은 없다" did not open (address now /items)
+
+################ 6. 교체한 변경 전 스크린샷 4장의 SHA256 (앞 16자리) — 로그인 화면(faf64e6b99ea230a)과 다름
+faf64e6b99ea230a before-light-ko-login.png
+a6b946ed9432d57f before-dark-ko-modal-item.png
+a6b946ed9432d57f before-light-ko-modal-item.png
+aaccc824f0c8a061 before-dark-ko-modal-outbound.png
+aaccc824f0c8a061 before-light-ko-modal-outbound.png
